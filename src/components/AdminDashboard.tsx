@@ -34,13 +34,30 @@ import {
 interface AdminDashboardProps {
   onSettingsSaved: () => void;
   isDarkMode: boolean;
+  isAdmin?: boolean;
+  setIsAdmin?: (isAdmin: boolean) => void;
+  activeTab?: "settings" | "hero" | "research" | "projects" | "pubs" | "achievements" | "blog" | "knowledge" | "messages";
+  setActiveTab?: (tab: "settings" | "hero" | "research" | "projects" | "pubs" | "achievements" | "blog" | "knowledge" | "messages") => void;
 }
 
-export default function AdminDashboard({ onSettingsSaved, isDarkMode }: AdminDashboardProps) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+export default function AdminDashboard({ 
+  onSettingsSaved, 
+  isDarkMode,
+  isAdmin,
+  setIsAdmin,
+  activeTab: passedActiveTab,
+  setActiveTab: passedSetActiveTab
+}: AdminDashboardProps) {
+  const [localIsAuthenticated, setLocalIsAuthenticated] = useState(false);
+  const isAuthenticated = isAdmin !== undefined ? isAdmin : localIsAuthenticated;
+  const setIsAuthenticated = setIsAdmin !== undefined ? setIsAdmin : setLocalIsAuthenticated;
+
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
-  const [activeTab, setActiveTab] = useState<"settings" | "hero" | "research" | "projects" | "pubs" | "achievements" | "blog" | "knowledge" | "messages">("settings");
+  
+  const [localActiveTab, setLocalActiveTab] = useState<"settings" | "hero" | "research" | "projects" | "pubs" | "achievements" | "blog" | "knowledge" | "messages">("settings");
+  const activeTab = passedActiveTab !== undefined ? passedActiveTab : localActiveTab;
+  const setActiveTab = passedSetActiveTab !== undefined ? passedSetActiveTab : setLocalActiveTab;
   
   // Loading status
   const [isSaving, setIsSaving] = useState(false);
@@ -312,9 +329,9 @@ export default function AdminDashboard({ onSettingsSaved, isDarkMode }: AdminDas
                 />
                 <Key className="w-4 h-4 text-gray-400 absolute right-3.5 top-3.5" />
               </div>
-              <p className="text-[10px] text-gray-400 dark:text-zinc-500 font-mono mt-1.5 text-center">
+             /*<p className="text-[10px] text-gray-400 dark:text-zinc-500 font-mono mt-1.5 text-center">
                 Demo default token: <code className="text-brand-accent-pink">upasyo2026</code>
-              </p>
+              </p>*/
             </div>
 
             {authError && (
