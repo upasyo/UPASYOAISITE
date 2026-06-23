@@ -1,0 +1,202 @@
+{
+  "entities": {
+    "SiteSettings": {
+      "title": "Site Settings",
+      "description": "Core layout settings for the UPASYO scientist portfolio",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "brandName": { "type": "string" },
+        "logoStyle": { "type": "string" },
+        "footerText": { "type": "string" },
+        "themePalette": { "type": "string" },
+        "primaryColor": { "type": "string" },
+        "accentColor": { "type": "string" }
+      },
+      "required": ["brandName"]
+    },
+    "HeroSection": {
+      "title": "Hero Section",
+      "description": "Welcome landing text, subtitles, and profile photos",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "description": { "type": "string" },
+        "resumeUrl": { "type": "string" },
+        "profileImage": { "type": "string" }
+      },
+      "required": ["title", "subtitle"]
+    },
+    "AboutSection": {
+      "title": "About Section",
+      "description": "Professional bio summary and specialized skills array",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "bio": { "type": "string" },
+        "skills": { "type": "array" }
+      },
+      "required": ["bio"]
+    },
+    "ResearchVision": {
+      "title": "Research Vision",
+      "description": "Overarching research thesis goals and vision paragraphs",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "paragraph1": { "type": "string" },
+        "paragraph2": { "type": "string" }
+      },
+      "required": ["title"]
+    },
+    "ResearchArea": {
+      "title": "Research Area",
+      "description": "Key fields of investigation with illustrative lucide icons",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "icon": { "type": "string" },
+        "order": { "type": "number" }
+      },
+      "required": ["title", "description"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "Technical software and research compiler repositories",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "description": { "type": "string" },
+        "tags": { "type": "array" },
+        "github": { "type": "string" },
+        "demo": { "type": "string" },
+        "impact": { "type": "string" },
+        "order": { "type": "number" }
+      },
+      "required": ["title"]
+    },
+    "Publication": {
+      "title": "Publication",
+      "description": "Scientific papers published in leading conferences or journals",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "authors": { "type": "string" },
+        "venue": { "type": "string" },
+        "url": { "type": "string" },
+        "date": { "type": "string" },
+        "order": { "type": "number" }
+      },
+      "required": ["title", "authors", "venue"]
+    },
+    "Achievement": {
+      "title": "Achievement",
+      "description": "Awards, honors, and fellowship titles received",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "issuer": { "type": "string" },
+        "description": { "type": "string" },
+        "order": { "type": "number" }
+      },
+      "required": ["title"]
+    },
+    "BlogPost": {
+      "title": "Blog Post",
+      "description": "Thought leadership essays and analytical breakdowns",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "date": { "type": "string" },
+        "readingTime": { "type": "string" },
+        "summary": { "type": "string" },
+        "content": { "type": "string" },
+        "image": { "type": "string" },
+        "order": { "type": "number" }
+      },
+      "required": ["title", "content"]
+    },
+    "ContactMessage": {
+      "title": "Contact Message",
+      "description": "Messages sent by platform visitors through the contact form",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "subject": { "type": "string" },
+        "message": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["name", "email", "message"]
+    },
+    "KnowledgeBase": {
+      "title": "Knowledge Base Clause",
+      "description": "Structured facts for RAG mapping and localized prompts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "content": { "type": "string" },
+        "category": { "type": "string" }
+      },
+      "required": ["content", "category"]
+    }
+  },
+  "firestore": {
+    "siteSettings": {
+      "schema": "SiteSettings",
+      "description": "Core site styling preferences"
+    },
+    "heroSection": {
+      "schema": "HeroSection",
+      "description": "Hero section dynamic information"
+    },
+    "aboutSection": {
+      "schema": "AboutSection",
+      "description": "Professional profile bio records"
+    },
+    "researchVision": {
+      "schema": "ResearchVision",
+      "description": "Scientific alignment statement details"
+    },
+    "researchAreas": {
+      "schema": "ResearchArea",
+      "description": "Specific research categories"
+    },
+    "projects": {
+      "schema": "Project",
+      "description": "Detailed implementation projects"
+    },
+    "publications": {
+      "schema": "Publication",
+      "description": "List of published books, conference papers and review summaries"
+    },
+    "achievements": {
+      "schema": "Achievement",
+      "description": "Professional certifications and awards list"
+    },
+    "blogPosts": {
+      "schema": "BlogPost",
+      "description": "CMS written scientific or personal essays"
+    },
+    "contactMessages": {
+      "schema": "ContactMessage",
+      "description": "Inbox message queues"
+    },
+    "knowledgeBase": {
+      "schema": "KnowledgeBase",
+      "description": "Information storage for AI RAG systems"
+    }
+  }
+}

@@ -1,0 +1,1069 @@
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { 
+  Sun, 
+  Moon, 
+  ArrowRight, 
+  Github, 
+  ExternalLink, 
+  FileText, 
+  Search, 
+  Send, 
+  Mail, 
+  User, 
+  ChevronRight, 
+  Sparkles, 
+  Terminal, 
+  Award, 
+  CheckCircle2, 
+  Database,
+  Cpu,
+  Brain,
+  MessageSquare,
+  BookOpen,
+  Menu,
+  X,
+  Plus
+} from "lucide-react";
+import ReactMarkdown from "react-markdown";
+
+import { 
+  fetchDoc, 
+  fetchCollection, 
+  submitContactMessage, 
+  seedDatabaseIfEmpty, 
+  COLLECTIONS,
+  SEED_DATA
+} from "./firebase";
+import NetworkLogo from "./components/NetworkLogo";
+import NeuralBackground from "./components/NeuralBackground";
+import AIAssistant from "./components/AIAssistant";
+import AdminDashboard from "./components/AdminDashboard";
+
+export default function App() {
+  // Theme state
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [selectedMobileMenu, setSelectedMobileMenu] = useState(false);
+
+  // Database contents
+  const [siteSettings, setSiteSettings] = useState<any>({});
+  const [hero, setHero] = useState<any>({});
+  const [about, setAbout] = useState<any>({});
+  const [researchVision, setResearchVision] = useState<any>({});
+  const [researchAreas, setResearchAreas] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [publications, setPublications] = useState<any[]>([]);
+  const [achievements, setAchievements] = useState<any[]>([]);
+  const [blogPosts, setBlogPosts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Active Blog filters & reader
+  const [blogSearch, setBlogSearch] = useState("");
+  const [selectedBlogCategory, setSelectedBlogCategory] = useState("All");
+  const [activeBlogArticle, setActiveBlogArticle] = useState<any | null>(null);
+
+  // Form states
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactSubject, setContactSubject] = useState("");
+  const [contactMessage, setContactMessage] = useState("");
+  const [contactLoading, setContactLoading] = useState(false);
+  const [contactSuccess, setContactSuccess] = useState(false);
+  const [contactError, setContactError] = useState(false);
+
+  // Admin Dashboard drawer state
+  const [displayAdmin, setDisplayAdmin] = useState(false);
+
+  // 1. Theme Engine & Time detection hook
+  useEffect(() => {
+    // Detect cached preference
+    const cachedPreference = localStorage.getItem("upasyo-theme");
+    if (cachedPreference) {
+      const isDark = cachedPreference === "dark";
+      setIsDarkMode(isDark);
+      applyTheme(isDark);
+    } else {
+      // Intelligent local device time tracking
+      const hours = new Date().getHours();
+      const isNightTime = hours >= 18 || hours < 6; // Night time = Dark
+      setIsDarkMode(isNightTime);
+      applyTheme(isNightTime);
+    }
+  }, []);
+
+  const applyTheme = (isDark: boolean) => {
+    if (isDark) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  };
+
+  const handleToggleTheme = () => {
+    const nextDark = !isDarkMode;
+    setIsDarkMode(nextDark);
+    applyTheme(nextDark);
+    localStorage.setItem("upasyo-theme", nextDark ? "dark" : "light");
+  };
+
+  // 2. Scroll Progress Tracker
+  useEffect(() => {
+    const handleScroll = () => {
+      const totalScroll = document.documentElement.scrollHeight - window.innerHeight;
+      if (totalScroll > 0) {
+        setScrollProgress((window.scrollY / totalScroll) * 100);
+      }
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // 3. Load Data & Seed on mount
+  const loadProfileParameters = async () => {
+    setLoading(true);
+    try {
+      // First seed the database if it is empty, catch error gracefully
+      try {
+        await seedDatabaseIfEmpty();
+      } catch (seedErr) {
+        console.warn("Database Seeding Failed or Bypassed:", seedErr);
+      }
+
+      // Load parameters
+      let siteSnap = null;
+      let heroSnap = null;
+      let aboutSnap = null;
+      let visionSnap = null;
+
+      try {
+        siteSnap = await fetchDoc(COLLECTIONS.SITE_SETTINGS, "default");
+      } catch (e) {
+        console.error("Error fetching siteSettings doc:", e);
+      }
+
+      try {
+        heroSnap = await fetchDoc(COLLECTIONS.HERO, "default");
+      } catch (e) {
+        console.error("Error fetching hero doc:", e);
+      }
+
+      try {
+        aboutSnap = await fetchDoc(COLLECTIONS.ABOUT, "default");
+      } catch (e) {
+        console.error("Error fetching about doc:", e);
+      }
+
+      try {
+        visionSnap = await fetchDoc(COLLECTIONS.RESEARCH_VISION, "default");
+      } catch (e) {
+        console.error("Error fetching researchVision doc:", e);
+      }
+
+      setSiteSettings(siteSnap || SEED_DATA.siteSettings);
+      setHero(heroSnap || SEED_DATA.heroSection);
+      setAbout(aboutSnap || SEED_DATA.aboutSection);
+      setResearchVision(visionSnap || SEED_DATA.researchVision);
+
+      let areas = [];
+      try {
+        areas = await fetchCollection(COLLECTIONS.RESEARCH_AREAS);
+      } catch (e) {
+        console.error("Error fetching researchAreas:", e);
+      }
+      setResearchAreas(areas && areas.length > 0 ? areas : SEED_DATA.researchAreas);
+
+      let projs = [];
+      try {
+        projs = await fetchCollection(COLLECTIONS.PROJECTS);
+      } catch (e) {
+        console.error("Error fetching projects:", e);
+      }
+      setProjects(projs && projs.length > 0 ? projs : SEED_DATA.projects);
+
+      let pubs = [];
+      try {
+        pubs = await fetchCollection(COLLECTIONS.PUBLICATIONS);
+      } catch (e) {
+        console.error("Error fetching publications:", e);
+      }
+      setPublications(pubs && pubs.length > 0 ? pubs : SEED_DATA.publications);
+
+      let achs = [];
+      try {
+        achs = await fetchCollection(COLLECTIONS.ACHIEVEMENTS);
+      } catch (e) {
+        console.error("Error fetching achievements:", e);
+      }
+      setAchievements(achs && achs.length > 0 ? achs : SEED_DATA.achievements);
+
+      let blogs = [];
+      try {
+        blogs = await fetchCollection(COLLECTIONS.BLOG_POSTS);
+      } catch (e) {
+        console.error("Error fetching blogPosts:", e);
+      }
+      setBlogPosts(blogs && blogs.length > 0 ? blogs : SEED_DATA.blogPosts);
+
+    } catch (err) {
+      console.error("Error drawing Firestore items entirely:", err);
+      // Fallback everything
+      setSiteSettings(SEED_DATA.siteSettings);
+      setHero(SEED_DATA.heroSection);
+      setAbout(SEED_DATA.aboutSection);
+      setResearchVision(SEED_DATA.researchVision);
+      setResearchAreas(SEED_DATA.researchAreas);
+      setProjects(SEED_DATA.projects);
+      setPublications(SEED_DATA.publications);
+      setAchievements(SEED_DATA.achievements);
+      setBlogPosts(SEED_DATA.blogPosts);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadProfileParameters();
+  }, []);
+
+  // 4. Handle forms submission
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!contactName.trim() || !contactEmail.trim() || !contactMessage.trim()) return;
+
+    setContactLoading(true);
+    try {
+      await submitContactMessage(contactName, contactEmail, contactSubject || "Inquiry", contactMessage);
+      setContactSuccess(true);
+      setContactName("");
+      setContactEmail("");
+      setContactSubject("");
+      setContactMessage("");
+      setTimeout(() => setContactSuccess(false), 8000);
+    } catch (err) {
+      setContactError(true);
+      setTimeout(() => setContactError(false), 8000);
+    } finally {
+      setContactLoading(false);
+    }
+  };
+
+  // List unique blog categories dynamically
+  const blogCategories = ["All", ...Array.from(new Set(blogPosts.map(post => post.category).filter(Boolean)))];
+
+  // Filter posts
+  const filteredBlogPosts = blogPosts.filter(post => {
+    const matchesSearch = post.title?.toLowerCase().includes(blogSearch.toLowerCase()) || 
+                          post.summary?.toLowerCase().includes(blogSearch.toLowerCase());
+    const matchesCategory = selectedBlogCategory === "All" || post.category === selectedBlogCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  return (
+    <div className={`min-h-screen relative font-sans overflow-x-hidden ${
+      isDarkMode ? "bg-brand-dark-base text-gray-200 selection:bg-pink-700/60" : "bg-white text-gray-800 selection:bg-pink-100"
+    }`}>
+      {/* Decorative Warm Cream / Pale Pink subtle background radial glow elements in light mode */}
+      {!isDarkMode && (
+        <div className="absolute top-0 inset-x-0 h-[600px] bg-gradient-to-b from-brand-cream via-pink-50/20 to-white -z-20 pointer-events-none select-none opacity-80" />
+      )}
+
+      {/* Dynamic Animated Neural Connection Background canvas */}
+      <NeuralBackground isDarkMode={isDarkMode} />
+
+      {/* 1. Animated Top Sticky Scroll progress bar */}
+      <div 
+        id="top-progress-scroll"
+        className="fixed top-0 left-0 h-[4px] bg-gradient-to-r from-pink-400 via-rose-400 to-brand-accent-pink z-[9999] shadow-[0_2px_12px_rgba(244,114,182,0.85)] transition-all duration-100 ease-out"
+        style={{ width: `${scrollProgress}%` }}
+      />
+
+      {/* Navigation Header */}
+      <header className="sticky top-0 z-[100] navbar-glass py-3.5 transition-all">
+        <div className="max-w-7xl mx-auto px-5 md:px-10 flex items-center justify-between">
+          
+          {/* Logo brand */}
+          <NetworkLogo isDarkMode={isDarkMode} />
+
+          {/* Desktop Navigation */}
+          <nav className="hidden lg:flex items-center gap-7" id="desktop-routing">
+            <a href="#about" className="text-[11px] font-mono font-medium uppercase tracking-[0.12em] hover:text-brand-accent-pink transition-colors">About</a>
+            <a href="#research" className="text-[11px] font-mono font-medium uppercase tracking-[0.12em] hover:text-brand-accent-pink transition-colors">Research</a>
+            <a href="#projects" className="text-[11px] font-mono font-medium uppercase tracking-[0.12em] hover:text-brand-accent-pink transition-colors">Projects</a>
+            <a href="#publications" className="text-[11px] font-mono font-medium uppercase tracking-[0.12em] hover:text-brand-accent-pink transition-colors">Papers</a>
+            <a href="#achievements" className="text-[11px] font-mono font-medium uppercase tracking-[0.12em] hover:text-brand-accent-pink transition-colors">Benchmarks</a>
+            <a href="#blog" className="text-[11px] font-mono font-medium uppercase tracking-[0.12em] hover:text-brand-accent-pink transition-colors">Blog</a>
+            <a href="#contact" className="text-[11px] font-mono font-medium uppercase tracking-[0.12em] hover:text-brand-accent-pink transition-colors">Contact</a>
+          </nav>
+
+          {/* Tool Control Actions */}
+          <div className="flex items-center gap-2.5">
+            {/* Theme Manual Toggle */}
+            <button
+              onClick={handleToggleTheme}
+              id="theme-manual-toggle"
+              className="p-2.5 rounded-full bg-slate-50 dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-800 text-gray-500 dark:text-zinc-400 hover:border-pink-300 transition-all cursor-pointer shadow-xs"
+              title="Toggle Day/Night manual mode override"
+            >
+              {isDarkMode ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4 text-zinc-600 dark:text-zinc-400" />}
+            </button>
+
+            {/* CMS Portal Trigger Link */}
+            <button
+              onClick={() => setDisplayAdmin(!displayAdmin)}
+              id="cms-dashboard-trigger"
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border text-[11px] font-mono uppercase font-bold transition-all cursor-pointer ${
+                displayAdmin 
+                  ? "bg-brand-accent-pink text-white border-brand-accent-pink shadow-lg" 
+                  : "bg-slate-900 dark:bg-white text-white dark:text-gray-950 border-transparent hover:bg-slate-800 dark:hover:bg-zinc-100"
+              }`}
+            >
+              <Database className="w-3.5 h-3.5 animate-pulse" />
+              <span>CMS_ADMIN</span>
+            </button>
+
+            {/* Mobile menu hamburger toggle */}
+            <button
+              onClick={() => setSelectedMobileMenu(!selectedMobileMenu)}
+              className="lg:hidden p-2.5 text-gray-600 dark:text-white cursor-pointer"
+            >
+              {selectedMobileMenu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Navigation Panel */}
+        <AnimatePresence>
+          {selectedMobileMenu && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="lg:hidden bg-white/95 dark:bg-brand-dark-base/95 border-b border-gray-100 dark:border-zinc-900 overflow-hidden"
+              id="mobile-routing"
+            >
+              <div className="flex flex-col gap-4 px-6 py-6 font-mono text-sm uppercase">
+                <a href="#about" onClick={() => setSelectedMobileMenu(false)} className="hover:text-brand-accent-pink transition-colors">About</a>
+                <a href="#research" onClick={() => setSelectedMobileMenu(false)} className="hover:text-brand-accent-pink transition-colors">Research</a>
+                <a href="#projects" onClick={() => setSelectedMobileMenu(false)} className="hover:text-brand-accent-pink transition-colors">Projects</a>
+                <a href="#publications" onClick={() => setSelectedMobileMenu(false)} className="hover:text-brand-accent-pink transition-colors">Publications</a>
+                <a href="#achievements" onClick={() => setSelectedMobileMenu(false)} className="hover:text-brand-accent-pink transition-colors">Benchmarks</a>
+                <a href="#blog" onClick={() => setSelectedMobileMenu(false)} className="hover:text-brand-accent-pink transition-colors">Blog</a>
+                <a href="#contact" onClick={() => setSelectedMobileMenu(false)} className="hover:text-brand-accent-pink transition-colors">Contact</a>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </header>
+
+      {/* Main Container Stage */}
+      <main className="max-w-7xl mx-auto px-5 md:px-10 py-10 space-y-24 md:space-y-36">
+
+        {/* ADMIN DRAWER EXPANSION */}
+        <AnimatePresence>
+          {displayAdmin && (
+            <motion.section
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.4 }}
+              className="overflow-hidden"
+            >
+              <AdminDashboard 
+                isDarkMode={isDarkMode} 
+                onSettingsSaved={loadProfileParameters} 
+              />
+            </motion.section>
+          )}
+        </AnimatePresence>
+
+        {loading ? (
+          <div className="py-24 text-center space-y-4">
+            <Cpu className="w-10 h-10 mx-auto text-brand-accent-pink animate-spin" />
+            <p className="font-mono text-xs text-gray-500 uppercase tracking-[0.2em]">Synchronizing Firestore Cluster...</p>
+          </div>
+        ) : (
+          <>
+            {/* HERO SECTION */}
+            <motion.section
+              className="relative flex flex-col-reverse lg:flex-row items-center gap-14 pt-4 md:pt-14"
+              id="hero-gate"
+              initial={{ opacity: 0, y: 35 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-120px" }}
+              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            >
+              
+              {/* Profile Bio details */}
+              <div className="flex-1 space-y-7 text-center lg:text-left">
+                <div className="badge-quantum">
+                  <span className="w-2 h-2 bg-pink-400 rounded-full animate-pulse" />
+                  <span>AI_COGNITIVE_RECON</span>
+                </div>
+
+                <h1 className="text-4xl md:text-6.5xl font-medium tracking-tight bg-gradient-to-br from-zinc-905 via-zinc-800 to-zinc-500 dark:from-white dark:via-zinc-100 dark:to-zinc-500 bg-clip-text text-transparent font-display leading-[1.05] select-text">
+                  {hero.title || "Deciphering the Code of intelligence"}
+                </h1>
+                
+                <p className="text-brand-accent-pink font-mono text-xs sm:text-sm font-semibold tracking-widest uppercase select-text">
+                  {hero.subtitle || "AI Scientist & Core Researcher"}
+                </p>
+
+                <p className="text-gray-500 dark:text-zinc-450 text-base md:text-lg max-w-xl leading-relaxed select-text font-light">
+                  {hero.description || "Building robust, self-aligned algorithmic transformers capable of multi-layered relational mapping and secure cognitive integration."}
+                </p>
+
+                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-2">
+                  <a href="#contact" className="btn-primary-quantum">
+                    DEPLOY COGNITIVE COLLAB
+                    <ArrowRight className="w-4 h-4 text-brand-accent-pink" />
+                  </a>
+                  <a href={hero.resumeUrl || "#"} className="btn-secondary-quantum">
+                    <FileText className="w-4 h-4 text-zinc-400" />
+                    DOWNLOAD_RESUME
+                  </a>
+                </div>
+              </div>
+
+              {/* Dynamic Rotating/Hover Photo display with unique accents */}
+              <div className="relative w-64 h-64 sm:w-80 sm:h-80 flex-shrink-0 flex items-center justify-center select-none">
+                {/* Metallic Silver and Pastel Pink concentric accent frames */}
+                <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-brand-silver via-zinc-250 dark:via-zinc-800 to-brand-pink animate-spin" style={{ animationDuration: '24s' }} />
+                <div className="absolute inset-2 bg-white dark:bg-brand-dark-base rounded-full" />
+                <div className="absolute inset-3.5 rounded-full overflow-hidden border border-zinc-100 dark:border-zinc-800/80 shadow-2xl">
+                  <img
+                    referrerPolicy="no-referrer"
+                    src={hero.profileImage || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d"}
+                    alt="UPASYO Profile Photograph"
+                    className="w-full h-full object-cover grayscale opacity-90 transition-all duration-750 hover:grayscale-0 hover:scale-105"
+                  />
+                </div>
+                {/* Micro-metrics overlays around the picture */}
+                <div className="absolute top-2 right-2 bg-white/90 dark:bg-zinc-900/90 border border-zinc-200/50 dark:border-zinc-800/80 px-2.5 py-1 rounded-md text-[9px] font-mono text-gray-500 font-semibold select-none flex items-center gap-1 shadow-xs">
+                  <CheckCircle2 className="w-3 h-3 text-pink-400" /> FACTUAL_ACCURACY: 99.8%
+                </div>
+                <div className="absolute bottom-2 left-2 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md border border-zinc-200/50 dark:border-zinc-800/80 px-2.5 py-1 rounded-md text-[9px] font-mono text-gray-500 font-semibold select-none flex items-center gap-1 shadow-xs">
+                  <Database className="w-3 h-3 text-brand-accent-pink" /> STORAGE: ONLINE
+                </div>
+              </div>
+            </motion.section>
+
+            {/* SCROLLING TECHNICAL TICKER */}
+            <div className="w-full overflow-hidden bg-brand-cream/10 dark:bg-brand-dark-card/30 border-y border-zinc-150/40 dark:border-zinc-900/80 py-5 select-none font-mono">
+              <div className="animate-scrolling-ticker flex gap-12 text-xs font-semibold uppercase tracking-[0.2em] text-gray-400 dark:text-zinc-650">
+                <span>ARTIFICIAL GENERAL INTELLIGENCE</span>
+                <span className="text-brand-accent-pink">•</span>
+                <span>NEURO-SYMBOLIC REASONING</span>
+                <span className="text-brand-accent-pink">•</span>
+                <span>TRANSFORMER ATTENTION SCALING</span>
+                <span className="text-brand-accent-pink">•</span>
+                <span>MECHANISTIC INTERPRETABILITY</span>
+                <span className="text-brand-accent-pink">•</span>
+                <span>REINFORCEMENT LEARNING WITH AI FEEDBACK (RLAIF)</span>
+                <span className="text-brand-accent-pink">•</span>
+                <span>ASSOCIATIVE RETRIEVAL TOPOLOGY</span>
+                <span className="text-brand-accent-pink">•</span>
+                <span>AI SAFETY & SYSTEM GUARANTEES</span>
+                <span className="text-brand-accent-pink">•</span>
+                {/* Double to enable endless loop */}
+                <span>ARTIFICIAL GENERAL INTELLIGENCE</span>
+                <span className="text-brand-accent-pink">•</span>
+                <span>NEURO-SYMBOLIC REASONING</span>
+                <span className="text-brand-accent-pink">•</span>
+                <span>TRANSFORMER ATTENTION SCALING</span>
+                <span className="text-brand-accent-pink">•</span>
+                <span>MECHANISTIC INTERPRETABILITY</span>
+                <span className="text-brand-accent-pink">•</span>
+                <span>REINFORCEMENT LEARNING WITH AI FEEDBACK (RLAIF)</span>
+                <span className="text-brand-accent-pink">•</span>
+                <span>ASSOCIATIVE RETRIEVAL TOPOLOGY</span>
+                <span className="text-brand-accent-pink">•</span>
+                <span>AI SAFETY & SYSTEM GUARANTEES</span>
+              </div>
+            </div>
+
+            {/* ABOUT & DETAILED BIO */}
+            <motion.section
+              className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start"
+              id="about"
+              initial={{ opacity: 0, y: 35 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-120px" }}
+              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="lg:col-span-4 font-mono select-none">
+                <span className="text-brand-accent-pink text-xs font-bold uppercase tracking-widest block mb-1">01 / SYSTEM_BIO</span>
+                <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white uppercase font-display">SCIENTIFIC DISCIPLINE</h2>
+                <div className="w-12 h-[2.5px] bg-brand-accent-pink mt-4" />
+              </div>
+
+              <div className="lg:col-span-8 space-y-7 select-text text-gray-600 dark:text-zinc-350">
+                <p className="text-base sm:text-lg leading-relaxed font-light font-sans">
+                  {about.bio || "Pioneering experimental training architectures across high-performance TPU layouts. My goals center around creating transparent cognitive structures that do not degrade in logical correctness."}
+                </p>
+
+                <div>
+                  <h4 className="text-xs font-mono font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest mb-4">CORE TECHNICAL SPECIALIZATIONS</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    {about.skills?.map((skill: string, index: number) => (
+                      <div 
+                        key={index} 
+                        className="flex items-center gap-2.5 bg-slate-50/50 dark:bg-zinc-905/40 p-3.5 rounded-xl border border-zinc-150/40 dark:border-zinc-900/60 hover:border-pink-200/50 dark:hover:border-pink-950/40 transition-colors"
+                      >
+                        <span className="w-1.5 h-1.5 bg-brand-accent-pink rounded-full flex-shrink-0 animate-pulse" />
+                        <span className="text-xs font-mono font-semibold text-gray-750 dark:text-zinc-300">{skill}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.section>
+
+            {/* RESEARCH VISION & THEMATIC INROADS */}
+            <motion.section
+              className="space-y-12"
+              id="research"
+              initial={{ opacity: 0, y: 35 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-120px" }}
+              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start font-mono select-none">
+                <div className="lg:col-span-4">
+                  <span className="text-brand-accent-pink text-xs font-bold uppercase tracking-widest block mb-1">02 / RESEARCH_METRICS</span>
+                  <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white uppercase font-display">VISION & FOCUS AREAS</h2>
+                  <div className="w-12 h-[2.5px] bg-brand-accent-pink mt-4" />
+                </div>
+              </div>
+
+              {/* Research Vision paragraph layout */}
+              <div className="bg-brand-cream/15 dark:bg-[#121214]/50 border border-zinc-150/40 dark:border-zinc-900/80 p-6 md:p-8 rounded-2xl md:rounded-3xl shadow-xs space-y-4">
+                <h3 className="font-mono text-sm md:text-base font-bold text-brand-accent-pink uppercase select-text tracking-wide">
+                  {researchVision.title || "COGNITIVE ALIGNMENT TARGETS"}
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-gray-500 dark:text-zinc-400 leading-relaxed font-light select-text">
+                  <p>{researchVision.paragraph1}</p>
+                  <p>{researchVision.paragraph2}</p>
+                </div>
+              </div>
+
+              {/* Interactive Focus area cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {researchAreas.map((area, index) => (
+                  <div
+                    key={area.id}
+                    className="card-premium p-6 sm:p-7 flex flex-col justify-between group"
+                    id={`research-area-${index}`}
+                  >
+                    <div>
+                      <div className="w-10 h-10 rounded-xl bg-pink-50 dark:bg-pink-950/20 text-brand-accent-pink border border-pink-100/50 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                        <Cpu className="w-5 h-5 animate-pulse" />
+                      </div>
+                      <h4 className="font-mono text-sm font-bold text-gray-900 dark:text-white mb-2.5 uppercase tracking-wide group-hover:text-brand-accent-pink transition-colors">
+                        {area.title}
+                      </h4>
+                      <p className="text-xs text-gray-500 dark:text-zinc-400 leading-relaxed font-light select-text">
+                        {area.description}
+                      </p>
+                    </div>
+                    <div className="text-[9px] font-mono text-gray-400 dark:text-zinc-600 uppercase tracking-widest mt-6">
+                      GRID_LOC_0{index + 1}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.section>
+
+            {/* PROJECTS PORTFOLIO */}
+            <motion.section
+              className="space-y-12"
+              id="projects"
+              initial={{ opacity: 0, y: 35 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-120px" }}
+              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start font-mono select-none">
+                <div className="lg:col-span-4">
+                  <span className="text-brand-accent-pink text-xs font-bold uppercase tracking-widest block mb-1">03 / CODE_ORBITS</span>
+                  <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white uppercase font-display">APPLIED EMBEDDED SYSTEMS</h2>
+                  <div className="w-12 h-[2.5px] bg-brand-accent-pink mt-4" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {projects.map((proj, index) => (
+                  <div
+                    key={proj.id}
+                    className="card-premium p-6 md:p-8 flex flex-col justify-between group"
+                    id={`project-card-${index}`}
+                  >
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-mono text-base font-bold text-gray-900 dark:text-white group-hover:text-brand-accent-pink transition-colors">
+                            {proj.title}
+                          </h3>
+                          <p className="text-[10px] text-brand-accent-pink font-semibold uppercase font-mono tracking-widest mt-1">
+                            {proj.subtitle}
+                          </p>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          {proj.github && (
+                            <a 
+                              href={proj.github} 
+                              target="_blank" 
+                              rel="noreferrer"
+                              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-900 text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                            >
+                              <Github className="w-4 h-4" />
+                            </a>
+                          )}
+                          {proj.demo && (
+                            <a 
+                              href={proj.demo} 
+                              target="_blank" 
+                              rel="noreferrer"
+                              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-900 text-gray-400 hover:text-brand-accent-pink transition-colors"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-zinc-400 leading-relaxed font-light select-text">
+                        {proj.description}
+                      </p>
+
+                      <div className="flex flex-wrap gap-1.5">
+                        {proj.tags?.map((t: string) => (
+                          <span key={t} className="text-[10px] font-mono font-medium bg-zinc-50 dark:bg-zinc-900 text-gray-600 dark:text-zinc-400 px-2.5 py-1 rounded-md border border-zinc-200/50 dark:border-zinc-800/80">
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="border-t border-zinc-100 dark:border-zinc-905 pt-4 mt-6">
+                      <div className="text-[9px] font-mono text-zinc-400 uppercase tracking-widest mb-1 select-none">SCIENTIFIC IMPACT METRICS</div>
+                      <p className="text-xs font-mono font-bold text-gray-800 dark:text-zinc-300">{proj.impact}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.section>
+
+            {/* PUBLICATIONS BIBLIOGRAPHY */}
+            <motion.section
+              className="space-y-12"
+              id="publications"
+              initial={{ opacity: 0, y: 35 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-120px" }}
+              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start font-mono select-none">
+                <div className="lg:col-span-4">
+                  <span className="text-brand-accent-pink text-xs font-bold uppercase tracking-widest block mb-1">04 / BIBLIOGRAPHY_CITE</span>
+                  <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white uppercase font-display">SELECTED PUBLICATIONS</h2>
+                  <div className="w-12 h-[2.5px] bg-brand-accent-pink mt-4" />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {publications.map((p, index) => (
+                  <div 
+                    key={p.id}
+                    className="p-5 md:p-6 bg-white dark:bg-zinc-905/40 hover:bg-slate-50/60 dark:hover:bg-zinc-900/40 rounded-xl border border-zinc-150/40 dark:border-zinc-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4 group transition-all duration-300 hover:scale-[1.005] hover:border-pink-200/50 dark:hover:border-pink-950/40 shadow-xs"
+                    id={`pub-item-${index}`}
+                  >
+                    <div className="space-y-2 max-w-3xl">
+                      <h4 className="font-semibold text-gray-900 dark:text-white text-base leading-snug group-hover:text-brand-accent-pink transition-colors select-text">
+                        "{p.title}"
+                      </h4>
+                      <p className="text-[11px] text-gray-400 font-mono tracking-wide uppercase">
+                        AUTHORS: <span className="text-gray-600 dark:text-zinc-300 font-sans normal-case font-light text-xs">{p.authors}</span>
+                      </p>
+                      <p className="text-[10px] sm:text-xs font-semibold text-brand-accent-pink font-mono tracking-widest uppercase">
+                        {p.venue}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-4.5 flex-shrink-0 font-mono text-xs">
+                      <span className="text-zinc-400 dark:text-zinc-550">{p.date}</span>
+                      {p.url && (
+                        <a 
+                          href={p.url}
+                          className="flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 hover:border-brand-accent-pink px-3.5 py-1.5 rounded-lg font-bold hover:text-brand-accent-pink transition-all text-[11px] tracking-wide cursor-pointer"
+                        >
+                          CITE_ABS <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.section>
+
+            {/* BENCHMARKS & ACHIEVEMENTS */}
+            <motion.section
+              className="space-y-12"
+              id="achievements"
+              initial={{ opacity: 0, y: 35 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-120px" }}
+              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start font-mono select-none">
+                <div className="lg:col-span-4">
+                  <span className="text-brand-accent-pink text-xs font-bold uppercase tracking-widest block mb-1">05 / RECOGNITION_BOARD</span>
+                  <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white uppercase font-display">ACCOLADES & MILESTONES</h2>
+                  <div className="w-12 h-[2.5px] bg-brand-accent-pink mt-4" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {achievements.map((ach, index) => (
+                  <div 
+                    key={ach.id}
+                    className="card-premium p-6 flex gap-4 hover:scale-[1.005] transition-all"
+                    id={`achievement-item-${index}`}
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-pink-50 dark:bg-pink-905 flex items-center justify-center text-brand-accent-pink flex-shrink-0 border border-pink-100/50">
+                      <Award className="w-5 h-5 animate-pulse" />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="font-mono text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wide">
+                        {ach.title}
+                      </h4>
+                      <p className="text-[10px] text-brand-accent-pink font-semibold font-mono tracking-widest uppercase">{ach.issuer}</p>
+                      <p className="text-xs text-gray-500 dark:text-zinc-400 leading-relaxed font-light mt-2 select-text">
+                        {ach.description}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.section>
+
+            {/* RESEARCH BLOG SECTION */}
+            <motion.section
+              className="space-y-12"
+              id="blog"
+              initial={{ opacity: 0, y: 35 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-120px" }}
+              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-end justify-between border-b border-zinc-150/50 dark:border-zinc-900 pb-5 font-mono">
+                <div className="lg:col-span-5 select-none">
+                  <span className="text-brand-accent-pink text-xs font-bold uppercase tracking-widest block mb-1">06 / REASON_POSTS</span>
+                  <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white uppercase font-display">SCIENTIFIC RESEARCH BLOG</h2>
+                  <div className="w-12 h-[2.5px] bg-brand-accent-pink mt-4" />
+                </div>
+
+                {/* Search / Filters block */}
+                <div className="lg:col-span-7 flex flex-col sm:flex-row gap-3 w-full">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      placeholder="Telemetry keyword search..."
+                      value={blogSearch}
+                      onChange={(e) => setBlogSearch(e.target.value)}
+                      className="w-full bg-slate-50/70 dark:bg-zinc-905/40 border border-zinc-200/60 dark:border-zinc-850 rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-pink-300 dark:text-white transition-all shadow-xs"
+                    />
+                    <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+                  </div>
+
+                  <div className="flex gap-1 overflow-x-auto py-1">
+                    {blogCategories.map((cat) => (
+                      <button
+                        key={cat}
+                        onClick={() => setSelectedBlogCategory(cat)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold uppercase cursor-pointer whitespace-nowrap transition-all ${
+                          selectedBlogCategory === cat 
+                            ? "bg-slate-900 dark:bg-pink-100 text-white dark:text-slate-950 shadow-xs" 
+                            : "bg-slate-50/60 dark:bg-zinc-900/50 text-gray-500 hover:text-zinc-900 dark:hover:text-white"
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Dynamic blog grid */}
+              {filteredBlogPosts.length === 0 ? (
+                <p className="text-center text-xs font-mono text-zinc-400 py-12 select-none">
+                  No research entries locate coordinates matching constraints.
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {filteredBlogPosts.map((post, index) => (
+                    <article
+                      key={post.id}
+                      className="card-premium flex flex-col justify-between group"
+                      id={`blog-card-${index}`}
+                    >
+                      <div>
+                        {post.image ? (
+                          <div className="h-48 overflow-hidden select-none relative bg-neutral-100">
+                            <img
+                              referrerPolicy="no-referrer"
+                              src={post.image}
+                              alt={post.title}
+                              className="w-full h-full object-cover grayscale brightness-95 group-hover:scale-105 group-hover:grayscale-0 transition-all duration-700"
+                            />
+                            <span className="absolute top-3 left-3 bg-white/95 dark:bg-zinc-900/95 border border-zinc-150/40 px-2.5 py-1 rounded-md text-[10px] font-mono text-gray-600 dark:text-zinc-400 font-semibold shadow-xs">
+                              {post.category}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="h-2 bg-gradient-to-r from-brand-silver via-brand-pink to-brand-cream" />
+                        )}
+
+                        <div className="p-6 md:p-8 space-y-3">
+                          <div className="flex items-center justify-between text-[11px] font-mono text-zinc-400">
+                            <span>{post.date}</span>
+                            <span>{post.readingTime || "5 min read"}</span>
+                          </div>
+
+                          <h3 
+                            onClick={() => setActiveBlogArticle(post)}
+                            className="text-lg md:text-xl font-bold font-sans text-gray-900 dark:text-white hover:text-brand-accent-pink transition-colors cursor-pointer leading-tight"
+                          >
+                            {post.title}
+                          </h3>
+
+                          <p className="text-xs sm:text-sm text-gray-500 dark:text-zinc-400 leading-relaxed font-light select-text">
+                            {post.summary}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="p-6 md:px-8 md:pb-8 border-t border-zinc-100 dark:border-zinc-905 flex justify-between items-center bg-zinc-50/20 dark:bg-zinc-905/10">
+                        <button
+                          onClick={() => setActiveBlogArticle(post)}
+                          className="text-xs font-mono font-bold text-gray-900 dark:text-white tracking-widest flex items-center gap-1 group-hover:text-brand-accent-pink cursor-pointer"
+                        >
+                          READ_RESEARCH_POST
+                          <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1.5 transition-transform" />
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </motion.section>
+
+            {/* PREMIUM ANIMATED CONTACT FORM */}
+            <motion.section
+              className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start pt-10"
+              id="contact"
+              initial={{ opacity: 0, y: 35 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-120px" }}
+              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            >
+              {/* Context text left */}
+              <div className="lg:col-span-5 space-y-4 font-mono select-none">
+                <span className="text-brand-accent-pink text-xs font-bold uppercase tracking-widest block mb-1">07 / DIRECT_ACCESS</span>
+                <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white uppercase leading-none font-display">COLLABORATIVE ROUTER</h2>
+                <div className="w-12 h-[2.5px] bg-brand-accent-pink mt-4" />
+                
+                <p className="text-xs sm:text-sm text-gray-400 dark:text-zinc-500 font-light leading-relaxed select-text font-sans pt-3">
+                  Are you managing foundation architectures or investigating neural alignment barriers? Establish a diagnostic link. Submissions write immediately to active Firestore messaging indexes.
+                </p>
+
+                <div className="space-y-2 pt-4 font-mono text-xs text-gray-500 dark:text-zinc-400">
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4.5 h-4.5 text-zinc-400" />
+                    <span className="select-text">upasyokushari@gmail.com</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Terminal className="w-4.5 h-4.5 text-zinc-400" />
+                    <span>COG_SECONDRY: ACTIVE</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Real-time validated input box */}
+              <div className="lg:col-span-7 card-premium p-6 sm:p-8">
+                {contactSuccess ? (
+                  <div className="py-12 flex flex-col items-center text-center space-y-4">
+                    <div className="w-12 h-12 rounded-full bg-pink-100 dark:bg-pink-900/30 border border-pink-200 text-brand-accent-pink flex items-center justify-center">
+                      <CheckCircle2 className="w-6 h-6 animate-bounce" />
+                    </div>
+                    <h3 className="font-mono text-sm font-bold uppercase tracking-wider text-gray-950 dark:text-white">COGNITIVE TUNNEL READY</h3>
+                    <p className="text-xs text-gray-500 max-w-sm font-sans select-text">
+                      Your entry variables were recorded onto active indexes successfully. UPASYO's scheduling algorithms will assess parameters shortly.
+                    </p>
+                    <button
+                      onClick={() => setContactSuccess(false)}
+                      className="text-xs font-mono font-bold text-brand-accent-pink cursor-pointer uppercase tracking-widest hover:underline"
+                    >
+                      RESET_TELEMETRY_PORTAL
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleContactSubmit} className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-mono font-bold text-gray-400 uppercase mb-1.5 tracking-wider">VISITOR_NAME</label>
+                        <input
+                          type="text"
+                          required
+                          value={contactName}
+                          onChange={(e) => setContactName(e.target.value)}
+                          placeholder="e.g. Dr. Vance"
+                          className="w-full bg-white dark:bg-zinc-900/50 border border-zinc-200/50 dark:border-zinc-805 rounded-xl px-4 py-2.5 text-sm dark:text-white focus:outline-none focus:border-pink-300 transition-colors shadow-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-mono font-bold text-gray-400 uppercase mb-1.5 tracking-wider">INQUIRY_COORD_EMAIL</label>
+                        <input
+                          type="email"
+                          required
+                          value={contactEmail}
+                          onChange={(e) => setContactEmail(e.target.value)}
+                          placeholder="vance@cognitive.org"
+                          className="w-full bg-white dark:bg-zinc-900/50 border border-zinc-200/50 dark:border-zinc-805 rounded-xl px-4 py-2.5 text-sm dark:text-white focus:outline-none focus:border-pink-300 transition-colors shadow-xs"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-mono font-bold text-gray-400 uppercase mb-1.5 tracking-wider">SUBJECT_INDEX</label>
+                      <input
+                        type="text"
+                        value={contactSubject}
+                        onChange={(e) => setContactSubject(e.target.value)}
+                        placeholder="e.g. Distributed Alignment safeguards"
+                        className="w-full bg-white dark:bg-zinc-900/50 border border-zinc-200/50 dark:border-zinc-805 rounded-xl px-4 py-2.5 text-sm dark:text-white focus:outline-none focus:border-pink-300 transition-colors shadow-xs"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-mono font-bold text-gray-400 uppercase mb-1.5 tracking-wider">TELEMETRY_MESSAGE</label>
+                      <textarea
+                        required
+                        rows={4}
+                        value={contactMessage}
+                        onChange={(e) => setContactMessage(e.target.value)}
+                        placeholder="Describe parameters of computational framework..."
+                        className="w-full bg-white dark:bg-zinc-900/50 border border-zinc-200/50 dark:border-zinc-805 rounded-xl px-4 py-3 text-sm dark:text-white focus:outline-none focus:border-pink-300 transition-colors shadow-xs"
+                      />
+                    </div>
+
+                    {contactError && (
+                      <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-250/40 rounded-xl font-mono text-[11px] text-red-600 dark:text-red-400">
+                        TRANSMISSION_ERROR: Firestore record allocation failed. Verify connection metrics.
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={contactLoading}
+                      className="btn-primary-quantum w-full sm:w-auto"
+                    >
+                      {contactLoading ? (
+                        <Cpu className="w-4 h-4 animate-spin text-brand-accent-pink" />
+                      ) : (
+                        <Send className="w-4 h-4 text-brand-accent-pink" />
+                      )}
+                      TRANSMIT_INQUIRY
+                    </button>
+                  </form>
+                )}
+              </div>
+            </motion.section>
+          </>
+        )}
+      </main>
+
+      {/* FOOTER */}
+      <footer className="border-t border-zinc-100 dark:border-zinc-900 py-12 bg-zinc-50/50 dark:bg-brand-dark-base select-none">
+        <div className="max-w-7xl mx-auto px-5 md:px-10 flex flex-col sm:flex-row items-center justify-between gap-6 font-mono text-xs text-gray-400 dark:text-zinc-650">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 bg-pink-400 rounded-full animate-ping" />
+            <span>{siteSettings.footerText || "© 2026 UPASYO. All intellectual resources reserved."}</span>
+          </div>
+          <div className="flex items-center gap-4 text-[10px]">
+            <span>SYSTEM STATE: SAFE_COEXISTENCE</span>
+            <span>PORT_ENTRY: 3000</span>
+          </div>
+        </div>
+      </footer>
+
+      {/* FLOAT AI RAG ASSISTANT WIDGET */}
+      <AIAssistant />
+
+      {/* ACTIVE FULL-PANE BLOG READ OVERLAY MODAL */}
+      <AnimatePresence>
+        {activeBlogArticle && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-md z-[200] overflow-y-auto px-4 py-8 sm:py-16 flex justify-center"
+            id="full-blog-reader"
+          >
+            <motion.div
+              initial={{ y: 30, scale: 0.95 }}
+              animate={{ y: 0, scale: 1 }}
+              exit={{ y: 30, scale: 0.95 }}
+              className="bg-white dark:bg-brand-dark-card border border-zinc-150 dark:border-zinc-800 p-6 md:p-10 rounded-2xl max-w-3xl w-full relative shadow-2xl h-fit space-y-6"
+            >
+              {/* Close Button */}
+              <button
+                onClick={() => setActiveBlogArticle(null)}
+                className="absolute top-4 right-4 p-2 rounded-full hover:bg-slate-50 dark:hover:bg-zinc-805 text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Meta */}
+              <div className="space-y-2 mt-2">
+                <span className="text-xs bg-pink-100 dark:bg-zinc-850 text-brand-accent-pink px-2.5 py-1 rounded font-mono font-semibold uppercase">
+                  {activeBlogArticle.category}
+                </span>
+                <p className="text-xs font-mono text-gray-400">{activeBlogArticle.date} · {activeBlogArticle.readingTime || "5 min read"}</p>
+                <h2 className="text-2xl md:text-3.5xl font-bold font-sans text-gray-900 dark:text-white leading-tight">
+                  {activeBlogArticle.title}
+                </h2>
+              </div>
+
+              {/* Dynamic AI summary helper */}
+              <div className="bg-brand-cream/40 dark:bg-zinc-905/40 border border-pink-100/30 rounded-xl p-4 md:p-5 space-y-2">
+                <h4 className="text-[10px] font-mono font-bold text-brand-accent-pink flex items-center gap-1.5 uppercase">
+                  <Sparkles className="w-3.5 h-3.5" /> COGNITIVE SUMMARY SYNOPSIS
+                </h4>
+                <p className="text-xs text-gray-650 dark:text-zinc-350 leading-relaxed italic">
+                  {activeBlogArticle.summary}
+                </p>
+              </div>
+
+              {/* Article Content Rendered via Markdown */}
+              <div className="prose dark:prose-invert max-w-none text-gray-800 dark:text-zinc-200 text-sm md:text-base leading-relaxed space-y-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                <ReactMarkdown>{activeBlogArticle.content || ""}</ReactMarkdown>
+              </div>
+
+              {/* Reader Progress indicator bottom bar */}
+              <div className="flex justify-end pt-6 border-t border-zinc-100 dark:border-zinc-800">
+                <button
+                  onClick={() => setActiveBlogArticle(null)}
+                  className="bg-slate-900 dark:bg-white text-white dark:text-gray-950 font-mono font-bold text-xs uppercase px-5 py-3 rounded-xl cursor-pointer"
+                >
+                  DISMISS_ARTICLE
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Upasyo AI Scientist Website",
+  "description": "UPASYO - World-Class AI Scientist Personal Website, Portfolio, and CMS Research Platform",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
