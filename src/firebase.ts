@@ -10,6 +10,8 @@ import {
   query, 
   orderBy, 
   getDoc,
+  getDocFromServer,
+  getDocsFromServer,
   serverTimestamp
 } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, User } from "firebase/auth";
@@ -226,7 +228,7 @@ export const SEED_DATA = {
 export async function seedDatabaseIfEmpty() {
   try {
     const settingsDocRef = doc(db, COLLECTIONS.SITE_SETTINGS, "default");
-    const docSnap = await getDoc(settingsDocRef);
+    const docSnap = await getDocFromServer(settingsDocRef);
     
     if (docSnap.exists()) {
       console.log("Firebase Database is already seeded.");
@@ -284,10 +286,10 @@ export async function seedDatabaseIfEmpty() {
 }
 
 // Read Helpers
-export async function fetchDoc(collectionName: string, docId: string = "default") {
+export async function fetchDoc(collectionName: string, docId: string = "default", bypassCache: boolean = true) {
   try {
     const docRef = doc(db, collectionName, docId);
-    const snap = await getDoc(docRef);
+    const snap = bypassCache ? await getDocFromServer(docRef) : await getDoc(docRef);
     if (snap.exists()) {
       return snap.data();
     }
@@ -298,11 +300,11 @@ export async function fetchDoc(collectionName: string, docId: string = "default"
   }
 }
 
-export async function fetchCollection(collectionName: string, sortByOrder: boolean = true) {
+export async function fetchCollection(collectionName: string, sortByOrder: boolean = true, bypassCache: boolean = true) {
   try {
     const colRef = collection(db, collectionName);
     const q = sortByOrder ? query(colRef, orderBy("order", "asc")) : colRef;
-    const snap = await getDocs(q);
+    const snap = bypassCache ? await getDocsFromServer(q) : await getDocs(q);
     const items: any[] = [];
     snap.forEach((doc) => {
       items.push({ id: doc.id, ...doc.data() });
@@ -312,7 +314,7 @@ export async function fetchCollection(collectionName: string, sortByOrder: boole
     // If the query fails due to missing order field or query indexing, fall back to plain fetch and simple client side ordering
     try {
       const colRef = collection(db, collectionName);
-      const snap = await getDocs(colRef);
+      const snap = bypassCache ? await getDocsFromServer(colRef) : await getDocs(colRef);
       const items: any[] = [];
       snap.forEach((doc) => {
         items.push({ id: doc.id, ...doc.data() });

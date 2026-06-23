@@ -13,6 +13,14 @@ async function startServer() {
   // Middleware to parse json requests
   app.use(express.json());
 
+  // Disable caching for all API endpoints to guarantee real-time updates
+  app.use("/api", (req, res, next) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    next();
+  });
+
   // API Route - Health Check
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", time: new Date().toISOString() });
@@ -98,11 +106,35 @@ Guidelines:
     console.log("Dev: Vite middleware mounted on Express app.");
   } else {
     const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
+    
+    // Serve static assets with cache-busting/versioning strategy
+    app.use(express.static(distPath, {
+      maxAge: "1d", // Default fallback
+      setHeaders: (res, filePath) => {
+        // If it's index.html, we must prevent caching so updates are loaded immediately
+        if (filePath.endsWith("index.html")) {
+          res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+          res.setHeader("Pragma", "no-cache");
+          res.setHeader("Expires", "0");
+        } else if (filePath.includes("/assets/")) {
+          // Vite generated assets are fingerprinted with hashes (e.g., index-[hash].js)
+          // Thus we can safely cache them forever as any update will change the hash
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        } else {
+          // Other assets (like public icons, favicon etc.) can be checked frequently
+          res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
+        }
+      }
+    }));
+
     app.get("*", (req, res) => {
+      // Force no-cache on SPA html delivery as well
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
       res.sendFile(path.join(distPath, "index.html"));
     });
-    console.log("Prod: Serving compiled static assets from dist/");
+    console.log("Prod: Serving compiled static assets from dist/ with robust cache-busting headers.");
   }
 
   app.listen(PORT, "0.0.0.0", () => {

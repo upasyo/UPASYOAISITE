@@ -27,7 +27,8 @@ import {
   fetchCollection, 
   updateOrCreateDoc, 
   deleteDocument,
-  seedDatabaseIfEmpty
+  seedDatabaseIfEmpty,
+  SEED_DATA
 } from "../firebase";
 
 interface AdminDashboardProps {
@@ -87,10 +88,10 @@ export default function AdminDashboard({ onSettingsSaved, isDarkMode }: AdminDas
     const aboutSnap = await fetchDoc(COLLECTIONS.ABOUT, "default");
     const visionSnap = await fetchDoc(COLLECTIONS.RESEARCH_VISION, "default");
 
-    if (siteSnap) setSiteSettings(siteSnap);
-    if (heroSnap) setHero(heroSnap);
-    if (aboutSnap) setAbout(aboutSnap);
-    if (visionSnap) setResearchVision(visionSnap);
+    setSiteSettings(siteSnap ? { ...SEED_DATA.siteSettings, ...siteSnap } : SEED_DATA.siteSettings);
+    setHero(heroSnap ? { ...SEED_DATA.heroSection, ...heroSnap } : SEED_DATA.heroSection);
+    setAbout(aboutSnap ? { ...SEED_DATA.aboutSection, ...aboutSnap } : SEED_DATA.aboutSection);
+    setResearchVision(visionSnap ? { ...SEED_DATA.researchVision, ...visionSnap } : SEED_DATA.researchVision);
 
     // List collections
     const rAreas = await fetchCollection(COLLECTIONS.RESEARCH_AREAS);
@@ -101,11 +102,11 @@ export default function AdminDashboard({ onSettingsSaved, isDarkMode }: AdminDas
     const kb = await fetchCollection(COLLECTIONS.KNOWLEDGE_BASE);
     const msgs = await fetchCollection(COLLECTIONS.CONTACT_MESSAGES, false);
 
-    setResearchAreas(rAreas);
-    setProjects(projs);
-    setPublications(pubs);
-    setAchievements(achs);
-    setBlogPosts(blogs);
+    setResearchAreas(rAreas && rAreas.length > 0 ? rAreas : SEED_DATA.researchAreas);
+    setProjects(projs && projs.length > 0 ? projs : SEED_DATA.projects);
+    setPublications(pubs && pubs.length > 0 ? pubs : SEED_DATA.publications);
+    setAchievements(achs && achs.length > 0 ? achs : SEED_DATA.achievements);
+    setBlogPosts(blogs && blogs.length > 0 ? blogs : SEED_DATA.blogPosts);
     setKnowledgeBase(kb);
     
     // Sort contact messages by timestamp descending
@@ -174,54 +175,90 @@ export default function AdminDashboard({ onSettingsSaved, isDarkMode }: AdminDas
   // Add handlers
   const handleAddResearchArea = async () => {
     if (!newArea.title) return;
-    const itemId = "area_" + Date.now();
-    await updateOrCreateDoc(COLLECTIONS.RESEARCH_AREAS, itemId, newArea);
-    setNewArea({ title: "", description: "", icon: "Cpu", order: researchAreas.length + 1 });
-    loadCmsData();
+    try {
+      const itemId = "area_" + Date.now();
+      await updateOrCreateDoc(COLLECTIONS.RESEARCH_AREAS, itemId, newArea);
+      setNewArea({ title: "", description: "", icon: "Cpu", order: researchAreas.length + 1 });
+      await loadCmsData();
+      onSettingsSaved();
+      triggerStatus("success", "Research area added successfully.");
+    } catch (err) {
+      triggerStatus("error", "Failed to add research area.");
+    }
   };
 
   const handleAddProject = async () => {
     if (!newProject.title) return;
-    const itemId = "proj_" + Date.now();
-    const data = {
-      ...newProject,
-      tags: newProject.tags.split(",").map(t => t.trim()).filter(Boolean)
-    };
-    await updateOrCreateDoc(COLLECTIONS.PROJECTS, itemId, data);
-    setNewProject({ title: "", subtitle: "", description: "", tags: "", github: "", demo: "", impact: "", order: projects.length + 1 });
-    loadCmsData();
+    try {
+      const itemId = "proj_" + Date.now();
+      const data = {
+        ...newProject,
+        tags: newProject.tags.split(",").map(t => t.trim()).filter(Boolean)
+      };
+      await updateOrCreateDoc(COLLECTIONS.PROJECTS, itemId, data);
+      setNewProject({ title: "", subtitle: "", description: "", tags: "", github: "", demo: "", impact: "", order: projects.length + 1 });
+      await loadCmsData();
+      onSettingsSaved();
+      triggerStatus("success", "Project schematic added successfully.");
+    } catch (err) {
+      triggerStatus("error", "Failed to add project schematic.");
+    }
   };
 
   const handleAddPublication = async () => {
     if (!newPub.title) return;
-    const itemId = "pub_" + Date.now();
-    await updateOrCreateDoc(COLLECTIONS.PUBLICATIONS, itemId, newPub);
-    setNewPub({ title: "", authors: "", venue: "", url: "", date: "", order: publications.length + 1 });
-    loadCmsData();
+    try {
+      const itemId = "pub_" + Date.now();
+      await updateOrCreateDoc(COLLECTIONS.PUBLICATIONS, itemId, newPub);
+      setNewPub({ title: "", authors: "", venue: "", url: "", date: "", order: publications.length + 1 });
+      await loadCmsData();
+      onSettingsSaved();
+      triggerStatus("success", "Publication entry added successfully.");
+    } catch (err) {
+      triggerStatus("error", "Failed to add publication.");
+    }
   };
 
   const handleAddAchievement = async () => {
     if (!newAch.title) return;
-    const itemId = "ach_" + Date.now();
-    await updateOrCreateDoc(COLLECTIONS.ACHIEVEMENTS, itemId, newAch);
-    setNewAch({ title: "", issuer: "", description: "", order: achievements.length + 1 });
-    loadCmsData();
+    try {
+      const itemId = "ach_" + Date.now();
+      await updateOrCreateDoc(COLLECTIONS.ACHIEVEMENTS, itemId, newAch);
+      setNewAch({ title: "", issuer: "", description: "", order: achievements.length + 1 });
+      await loadCmsData();
+      onSettingsSaved();
+      triggerStatus("success", "Benchmark accolade added successfully.");
+    } catch (err) {
+      triggerStatus("error", "Failed to add benchmark accolade.");
+    }
   };
 
   const handleAddBlogPost = async () => {
     if (!newBlog.title) return;
-    const itemId = "blog_" + Date.now();
-    await updateOrCreateDoc(COLLECTIONS.BLOG_POSTS, itemId, newBlog);
-    setNewBlog({ title: "", category: "Deep Learning", date: new Date().toLocaleDateString(), readingTime: "5 min", summary: "", content: "", image: "", order: blogPosts.length + 1 });
-    loadCmsData();
+    try {
+      const itemId = "blog_" + Date.now();
+      await updateOrCreateDoc(COLLECTIONS.BLOG_POSTS, itemId, newBlog);
+      setNewBlog({ title: "", category: "Deep Learning", date: new Date().toLocaleDateString(), readingTime: "5 min", summary: "", content: "", image: "", order: blogPosts.length + 1 });
+      await loadCmsData();
+      onSettingsSaved();
+      triggerStatus("success", "Research blog paper added successfully.");
+    } catch (err) {
+      triggerStatus("error", "Failed to add research blog paper.");
+    }
   };
 
   const handleAddKnowledge = async () => {
     if (!newKb.content) return;
-    const itemId = "kb_" + Date.now();
-    await updateOrCreateDoc(COLLECTIONS.KNOWLEDGE_BASE, itemId, newKb);
-    setNewKb({ content: "", category: "General" });
-    loadCmsData();
+    try {
+      const itemId = "kb_" + Date.now();
+      await updateOrCreateDoc(COLLECTIONS.KNOWLEDGE_BASE, itemId, newKb);
+      setNewKb({ content: "", category: "General" });
+      await loadCmsData();
+      onSettingsSaved();
+      triggerStatus("success", "AI RAG fact added successfully.");
+    } catch (err) {
+      triggerStatus("error", "Failed to add AI RAG fact.");
+    }
   };
 
   // Delete Handlers
@@ -547,7 +584,7 @@ export default function AdminDashboard({ onSettingsSaved, isDarkMode }: AdminDas
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {researchAreas.map((area) => (
-                  <div key={area.id} className="bg-slate-50 dark:bg-zinc-905 p-4 rounded-xl border border-zinc-200/50 dark:border-zinc-900 flex justify-between items-start">
+                  <div key={area.id} className="bg-slate-50 dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200/50 dark:border-zinc-800 flex justify-between items-start">
                     <div>
                       <h4 className="font-mono text-xs font-bold text-gray-900 dark:text-white">{area.title}</h4>
                       <p className="text-xs text-gray-500 mt-1">{area.description}</p>
@@ -612,7 +649,7 @@ export default function AdminDashboard({ onSettingsSaved, isDarkMode }: AdminDas
             
             <div className="space-y-4">
               {projects.map((proj) => (
-                <div key={proj.id} className="p-4 bg-slate-50 dark:bg-zinc-905 border border-zinc-200/50 dark:border-zinc-900/55 rounded-xl flex justify-between items-start">
+                <div key={proj.id} className="p-4 bg-slate-50 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800 rounded-xl flex justify-between items-start">
                   <div>
                     <h4 className="font-mono text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
                       {proj.title} <span className="text-xs text-gray-400 font-normal">({proj.subtitle})</span>
@@ -711,7 +748,7 @@ export default function AdminDashboard({ onSettingsSaved, isDarkMode }: AdminDas
             
             <div className="space-y-4">
               {publications.map((p) => (
-                <div key={p.id} className="p-4 bg-slate-50 dark:bg-zinc-905 border border-zinc-200/50 dark:border-zinc-900 rounded-xl flex justify-between items-start">
+                <div key={p.id} className="p-4 bg-slate-50 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800 rounded-xl flex justify-between items-start">
                   <div>
                     <h4 className="font-mono text-sm font-bold text-gray-900 dark:text-white">"{p.title}"</h4>
                     <p className="text-xs text-gray-400 mt-1">AUTHORS: {p.authors}</p>
@@ -785,7 +822,7 @@ export default function AdminDashboard({ onSettingsSaved, isDarkMode }: AdminDas
             
             <div className="space-y-4">
               {achievements.map((a) => (
-                <div key={a.id} className="p-4 bg-slate-50 dark:bg-zinc-905 border border-zinc-200/50 dark:border-zinc-900 rounded-xl flex justify-between items-start">
+                <div key={a.id} className="p-4 bg-slate-50 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800 rounded-xl flex justify-between items-start">
                   <div>
                     <h4 className="font-mono text-sm font-bold text-gray-900 dark:text-white">{a.title}</h4>
                     <p className="text-xs text-brand-accent-pink font-semibold mt-0.5">ISSUED BY: {a.issuer}</p>
@@ -847,7 +884,7 @@ export default function AdminDashboard({ onSettingsSaved, isDarkMode }: AdminDas
             
             <div className="space-y-4">
               {blogPosts.map((post) => (
-                <div key={post.id} className="p-4 bg-slate-50 dark:bg-zinc-905 border border-zinc-200/50 dark:border-zinc-900 rounded-xl flex justify-between items-start">
+                <div key={post.id} className="p-4 bg-slate-50 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800 rounded-xl flex justify-between items-start">
                   <div>
                     <h4 className="font-mono text-sm font-bold text-gray-900 dark:text-white">{post.title}</h4>
                     <p className="text-[10px] bg-pink-100 dark:bg-zinc-800 text-brand-accent-pink px-2 py-0.5 rounded inline-block mt-1 font-mono">{post.category}</p>
@@ -941,7 +978,7 @@ export default function AdminDashboard({ onSettingsSaved, isDarkMode }: AdminDas
 
             <div className="space-y-3">
               {knowledgeBase.map((k) => (
-                <div key={k.id} className="p-4 bg-slate-50 dark:bg-zinc-905 border border-zinc-200/50 dark:border-zinc-900 rounded-xl flex justify-between items-start">
+                <div key={k.id} className="p-4 bg-slate-50 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800 rounded-xl flex justify-between items-start">
                   <div>
                     <span className="text-[9px] font-mono font-bold bg-pink-100 dark:bg-zinc-800 text-brand-accent-pink px-1.5 py-0.5 rounded uppercase">
                       {k.category || "General"}
@@ -994,13 +1031,13 @@ export default function AdminDashboard({ onSettingsSaved, isDarkMode }: AdminDas
             <h3 className="text-sm font-mono font-bold text-gray-700 dark:text-zinc-300 uppercase">CONTACT FORM INBOX Telemetry</h3>
             
             {messages.length === 0 ? (
-              <p className="text-xs text-gray-400 font-mono italic text-center p-8 bg-zinc-50 dark:bg-zinc-905 border border-dashed rounded-xl">
+              <p className="text-xs text-gray-400 font-mono italic text-center p-8 bg-zinc-50 dark:bg-zinc-900 border border-dashed rounded-xl">
                 No inbound submissions received yet.
               </p>
             ) : (
               <div className="space-y-4">
                 {messages.map((msg) => (
-                  <div key={msg.id} className="p-5 bg-zinc-50 dark:bg-zinc-905 border border-zinc-200/50 dark:border-zinc-900 rounded-xl space-y-2">
+                  <div key={msg.id} className="p-5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800 rounded-xl space-y-2">
                     <div className="flex justify-between items-start">
                       <div>
                         <h4 className="font-mono text-sm font-bold text-gray-900 dark:text-white">{msg.subject || "No Subject"}</h4>

@@ -4,9 +4,48 @@ import { motion } from "motion/react";
 interface NetworkLogoProps {
   className?: string;
   isDarkMode?: boolean;
+  brandName?: string;
 }
 
-export default function NetworkLogo({ className = "", isDarkMode = false }: NetworkLogoProps) {
+export default function NetworkLogo({ className = "", isDarkMode = false, brandName = "UPASYO" }: NetworkLogoProps) {
+  const isDefaultBrand = !brandName || brandName.trim().toUpperCase() === "UPASYO";
+
+  if (!isDefaultBrand) {
+    return (
+      <div className={`relative flex items-center select-none ${className}`} id="upasyo-network-logo">
+        <motion.div
+          className="relative flex items-center gap-3 cursor-pointer"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          {/* Glow behind the logo */}
+          <div className={`absolute -inset-2 rounded-full blur-xl transition-all duration-700 opacity-60 ${
+            isDarkMode ? "bg-pink-900/10" : "bg-pink-100/40"
+          }`} />
+
+          <div className="flex items-center gap-2">
+            <span className={`text-xl font-bold tracking-[0.18em] font-display uppercase ${
+              isDarkMode ? "text-white" : "text-zinc-950"
+            }`}>
+              {brandName}
+            </span>
+            <div className="flex items-center justify-center">
+              <span className="w-2 h-2 rounded-full bg-brand-accent-pink animate-pulse" />
+            </div>
+          </div>
+
+          {/* Accent floating subtitle node */}
+          <div className="absolute -bottom-4 right-0.5 flex items-center gap-1 opacity-80 scale-75">
+            <span className="w-1.5 h-1.5 bg-pink-400 rounded-full animate-ping" />
+            <span className="text-[8px] tracking-[0.2em] font-mono text-gray-400 dark:text-zinc-500 font-semibold uppercase">
+              COG_SYSTEM
+            </span>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
   // SVG points representing neural network nodes within the letters of UPASYO.
   // We'll overlay stylized connections and pulses.
   return (
