@@ -36,8 +36,8 @@ interface AdminDashboardProps {
   isDarkMode: boolean;
   isAdmin?: boolean;
   setIsAdmin?: (isAdmin: boolean) => void;
-  activeTab?: "settings" | "hero" | "research" | "projects" | "pubs" | "achievements" | "blog" | "knowledge" | "messages";
-  setActiveTab?: (tab: "settings" | "hero" | "research" | "projects" | "pubs" | "achievements" | "blog" | "knowledge" | "messages") => void;
+  activeTab?: "settings" | "hero" | "research" | "projects" | "pubs" | "achievements" | "blog" | "knowledge" | "messages" | "links";
+  setActiveTab?: (tab: "settings" | "hero" | "research" | "projects" | "pubs" | "achievements" | "blog" | "knowledge" | "messages" | "links") => void;
 }
 
 export default function AdminDashboard({ 
@@ -55,7 +55,7 @@ export default function AdminDashboard({
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
   
-  const [localActiveTab, setLocalActiveTab] = useState<"settings" | "hero" | "research" | "projects" | "pubs" | "achievements" | "blog" | "knowledge" | "messages">("settings");
+  const [localActiveTab, setLocalActiveTab] = useState<"settings" | "hero" | "research" | "projects" | "pubs" | "achievements" | "blog" | "knowledge" | "messages" | "links">("settings");
   const activeTab = passedActiveTab !== undefined ? passedActiveTab : localActiveTab;
   const setActiveTab = passedSetActiveTab !== undefined ? passedSetActiveTab : setLocalActiveTab;
   
@@ -87,6 +87,7 @@ export default function AdminDashboard({
   const [blogPosts, setBlogPosts] = useState<any[]>([]);
   const [knowledgeBase, setKnowledgeBase] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
+  const [links, setLinks] = useState<any[]>([]);
 
   // Editing forms state holder (for adds/updates)
   const [newArea, setNewArea] = useState({ title: "", description: "", icon: "Cpu", order: 1 });
@@ -95,6 +96,8 @@ export default function AdminDashboard({
   const [newAch, setNewAch] = useState({ title: "", issuer: "", description: "", order: 1 });
   const [newBlog, setNewBlog] = useState({ title: "", category: "Deep Learning", date: "", readingTime: "5 min", summary: "", content: "", image: "", order: 1 });
   const [newKb, setNewKb] = useState({ content: "", category: "General" });
+  const [newLink, setNewLink] = useState({ name: "", url: "", color: "#e11d48" });
+  const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
 
   const adminPasscode = "upasyo2026"; // Secure default pass
 
@@ -117,6 +120,7 @@ export default function AdminDashboard({
     const achs = await fetchCollection(COLLECTIONS.ACHIEVEMENTS);
     const blogs = await fetchCollection(COLLECTIONS.BLOG_POSTS);
     const kb = await fetchCollection(COLLECTIONS.KNOWLEDGE_BASE);
+    const links = await fetchCollection(COLLECTIONS.BUTTON_LINKS);
     const msgs = await fetchCollection(COLLECTIONS.CONTACT_MESSAGES, false);
 
     setResearchAreas(rAreas && rAreas.length > 0 ? rAreas : SEED_DATA.researchAreas);
@@ -125,6 +129,7 @@ export default function AdminDashboard({
     setAchievements(achs && achs.length > 0 ? achs : SEED_DATA.achievements);
     setBlogPosts(blogs && blogs.length > 0 ? blogs : SEED_DATA.blogPosts);
     setKnowledgeBase(kb);
+    setLinks(links || []);
     
     // Sort contact messages by timestamp descending
     if (msgs) {
@@ -264,17 +269,18 @@ export default function AdminDashboard({
     }
   };
 
-  const handleAddKnowledge = async () => {
-    if (!newKb.content) return;
+  const handleSaveLink = async () => {
+    if (!newLink.name || !newLink.url) return;
     try {
-      const itemId = "kb_" + Date.now();
-      await updateOrCreateDoc(COLLECTIONS.KNOWLEDGE_BASE, itemId, newKb);
-      setNewKb({ content: "", category: "General" });
+      const itemId = editingLinkId || "link_" + Date.now();
+      await updateOrCreateDoc(COLLECTIONS.BUTTON_LINKS, itemId, newLink);
+      setNewLink({ name: "", url: "", color: "#e11d48" });
+      setEditingLinkId(null); // Reset
       await loadCmsData();
       onSettingsSaved();
-      triggerStatus("success", "AI RAG fact added successfully.");
+      triggerStatus("success", editingLinkId ? "Link button updated successfully." : "Link button added successfully.");
     } catch (err) {
-      triggerStatus("error", "Failed to add AI RAG fact.");
+      triggerStatus("error", "Failed to save link button.");
     }
   };
 
@@ -329,9 +335,9 @@ export default function AdminDashboard({
                 />
                 <Key className="w-4 h-4 text-gray-400 absolute right-3.5 top-3.5" />
               </div>
-             /*<p className="text-[10px] text-gray-400 dark:text-zinc-500 font-mono mt-1.5 text-center">
+            {/* <p className="text-[10px] text-gray-400 dark:text-zinc-500 font-mono mt-1.5 text-center">
                 Demo default token: <code className="text-brand-accent-pink">upasyo2026</code>
-              </p>*/
+              </p> */}
             </div>
 
             {authError && (
@@ -362,6 +368,15 @@ export default function AdminDashboard({
         </div>
         
         <div className="flex flex-wrap items-center gap-2">
+          {activeTab !== "messages" && (
+            <button
+              onClick={() => setActiveTab("messages")}
+              className="flex items-center gap-1.5 text-xs font-mono bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300 px-3 py-2 rounded-lg cursor-pointer hover:bg-pink-200 dark:hover:bg-pink-900/50 transition-colors"
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              VIEW_MESSAGES
+            </button>
+          )}
           <button 
             onClick={handleResetDatabase}
             disabled={isResetting}
@@ -406,7 +421,8 @@ export default function AdminDashboard({
           { id: "achievements", label: "BENCHMARKS", icon: Award },
           { id: "blog", label: "RESEARCH_BLOG", icon: FileText },
           { id: "knowledge", label: "AI_RAG_FACTS", icon: Brain },
-          { id: "messages", label: "FORM_MESSAGES", icon: MessageSquare }
+          { id: "messages", label: "FORM_MESSAGES", icon: MessageSquare },
+          { id: "links", label: "BUTTON_LINKS", icon: Edit2 }
         ].map((tab) => {
           const Icon = tab.icon;
           return (
@@ -1038,6 +1054,83 @@ export default function AdminDashboard({
                 <Plus className="w-3.5 h-3.5" />
                 LOAD FACT CHUNK
               </button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "links" && (
+          <div className="space-y-4">
+            <h3 className="text-sm font-mono font-bold text-gray-700 dark:text-zinc-300 uppercase">Manage Button Links</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {links.map((link) => (
+                <div key={link.id} className="p-4 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800 rounded-xl flex items-center justify-between">
+                  <div>
+                    <p className="font-mono text-sm font-bold">{link.name}</p>
+                    <p className="text-xs text-gray-500 font-mono">{link.url}</p>
+                    <div className="w-4 h-4 rounded-full mt-1" style={{ backgroundColor: link.color }} />
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => {
+                        setEditingLinkId(link.id);
+                        setNewLink({ name: link.name, url: link.url, color: link.color });
+                      }}
+                      className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteItem(COLLECTIONS.BUTTON_LINKS, link.id)}
+                      className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg"
+                    >
+                      {pendingDeleteId === `${COLLECTIONS.BUTTON_LINKS}_${link.id}` ? "SURE?" : <Trash2 className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-brand-cream/20 border border-pink-100/30 p-4 rounded-xl space-y-3">
+              <p className="text-xs font-mono font-bold text-brand-accent-pink uppercase">{editingLinkId ? "EDITING LINK" : "ADD NEW LINK"}</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <input
+                  type="text"
+                  placeholder="Button Name"
+                  value={newLink.name}
+                  onChange={(e) => setNewLink({ ...newLink, name: e.target.value })}
+                  className="bg-white dark:bg-zinc-900 border border-zinc-200/50 px-3 py-2 text-sm rounded-lg"
+                />
+                <input
+                  type="text"
+                  placeholder="URL Source"
+                  value={newLink.url}
+                  onChange={(e) => setNewLink({ ...newLink, url: e.target.value })}
+                  className="bg-white dark:bg-zinc-900 border border-zinc-200/50 px-3 py-2 text-sm rounded-lg"
+                />
+                <input
+                  type="color"
+                  value={newLink.color}
+                  onChange={(e) => setNewLink({ ...newLink, color: e.target.value })}
+                  className="h-9 w-full cursor-pointer"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSaveLink}
+                  className="bg-slate-900 dark:bg-white text-white dark:text-gray-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  {editingLinkId ? "UPDATE LINK" : "ADD BUTTON LINK"}
+                </button>
+                {editingLinkId && (
+                  <button
+                    onClick={() => { setEditingLinkId(null); setNewLink({ name: "", url: "", color: "#e11d48" }); }}
+                    className="bg-gray-200 dark:bg-zinc-800 text-gray-800 dark:text-gray-300 font-bold px-4 py-2 rounded-xl text-xs cursor-pointer"
+                  >
+                    CANCEL
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}

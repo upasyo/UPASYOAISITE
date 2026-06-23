@@ -12,7 +12,8 @@ import {
   getDoc,
   getDocFromServer,
   getDocsFromServer,
-  serverTimestamp
+  serverTimestamp,
+  onSnapshot
 } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, User } from "firebase/auth";
 
@@ -43,7 +44,8 @@ export const COLLECTIONS = {
   ACHIEVEMENTS: "achievements",
   BLOG_POSTS: "blogPosts",
   CONTACT_MESSAGES: "contactMessages",
-  KNOWLEDGE_BASE: "knowledgeBase"
+  KNOWLEDGE_BASE: "knowledgeBase",
+  BUTTON_LINKS: "buttonLinks"
 };
 
 // Seeding Data

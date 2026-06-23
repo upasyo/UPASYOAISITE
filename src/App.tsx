@@ -24,7 +24,11 @@ import {
   Menu,
   X,
   Plus,
-  ArrowUp
+  ArrowUp,
+  Linkedin,
+  Facebook,
+  Instagram,
+  MessageCircle
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
@@ -90,9 +94,13 @@ export default function App() {
 
   // Admin Dashboard drawer state
   const [displayAdmin, setDisplayAdmin] = useState(false);
+  const [greeting, setGreeting] = useState("");
 
   // 1. Theme Engine & Time detection hook
   useEffect(() => {
+    const hours = new Date().getHours();
+    setGreeting(hours < 12 ? "Good Morning" : "Good Evening");
+
     // Detect cached preference
     const cachedPreference = localStorage.getItem("upasyo-theme");
     if (cachedPreference) {
@@ -101,7 +109,6 @@ export default function App() {
       applyTheme(isDark);
     } else {
       // Intelligent local device time tracking
-      const hours = new Date().getHours();
       const isNightTime = hours >= 18 || hours < 6; // Night time = Dark
       setIsDarkMode(isNightTime);
       applyTheme(isNightTime);
@@ -453,7 +460,6 @@ export default function App() {
         {loading ? (
           <div className="py-24 text-center space-y-4">
             <Cpu className="w-10 h-10 mx-auto text-brand-accent-pink animate-spin" />
-            <p className="font-mono text-xs text-gray-500 uppercase tracking-[0.2em]">Synchronizing Firestore Cluster...</p>
           </div>
         ) : (
           <>
@@ -469,12 +475,15 @@ export default function App() {
               
               {/* Profile Bio details */}
               <div className="flex-1 space-y-7 text-center lg:text-left">
+                <h2 className="text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-br from-zinc-950 via-zinc-800 to-zinc-600 dark:from-white dark:via-zinc-100 dark:to-zinc-300 bg-clip-text text-transparent font-display">
+                  {greeting},
+                </h2>
                 <div className="badge-quantum">
                   <span className="w-2 h-2 bg-pink-400 rounded-full animate-pulse" />
                   <span>AI_COGNITIVE_RECON</span>
                 </div>
 
-                 <h1 className="text-4xl md:text-6.5xl font-medium tracking-tight bg-gradient-to-br from-zinc-950 via-zinc-800 to-zinc-600 dark:from-white dark:via-zinc-200 dark:to-zinc-400 bg-clip-text text-transparent font-display leading-[1.05] select-text">
+                 <h1 className="text-4xl md:text-6.5xl font-bold tracking-tight bg-gradient-to-br from-zinc-950 via-zinc-800 to-zinc-600 dark:from-white dark:via-zinc-100 dark:to-zinc-300 bg-clip-text text-transparent font-display leading-[1.05] select-text">
                   {hero.title || "Deciphering the Code of intelligence"}
                 </h1>
                 
@@ -491,7 +500,7 @@ export default function App() {
                     className="tracking-widest"
                   />
                 </div>
-
+                
                 <p className="text-zinc-700 dark:text-zinc-300 text-base md:text-lg max-w-xl leading-relaxed select-text font-light">
                   {hero.description || "Building robust, self-aligned algorithmic transformers capable of multi-layered relational mapping and secure cognitive integration."}
                 </p>
@@ -518,7 +527,7 @@ export default function App() {
                     referrerPolicy="no-referrer"
                     src={hero.profileImage || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d"}
                     alt="UPASYO Profile Photograph"
-                    className="w-full h-full object-cover grayscale opacity-90 transition-all duration-750 hover:grayscale-0 hover:scale-105"
+                    className="w-full h-full object-cover opacity-90 transition-all duration-300 hover:scale-105 active:scale-105"
                   />
                 </div>
                 {/* Micro-metrics overlays around the picture */}
@@ -581,7 +590,7 @@ export default function App() {
               </div>
 
               <div className="lg:col-span-8 space-y-7 select-text text-zinc-700 dark:text-zinc-300">
-                <p className="text-base sm:text-lg leading-relaxed font-light font-sans">
+                <p className="text-base sm:text-lg leading-relaxed font-medium font-sans text-zinc-900 dark:text-zinc-100">
                   {about.bio || "Pioneering experimental training architectures across high-performance TPU layouts. My goals center around creating transparent cognitive structures that do not degrade in logical correctness."}
                 </p>
 
@@ -628,7 +637,7 @@ export default function App() {
                 <h3 className="font-mono text-sm md:text-base font-bold text-brand-accent-pink uppercase select-text tracking-wide">
                   {researchVision.title || "COGNITIVE ALIGNMENT TARGETS"}
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed font-light select-text">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-zinc-900 dark:text-zinc-100 leading-relaxed font-medium select-text">
                   <p>{researchVision.paragraph1}</p>
                   <p>{researchVision.paragraph2}</p>
                 </div>
@@ -1099,7 +1108,11 @@ export default function App() {
             <span>{siteSettings.footerText || "© 2026 UPASYO. All intellectual resources reserved."}</span>
           </div>
           <div className="flex items-center gap-4 text-[10px]">
-            <span>SYSTEM STATE: SAFE_COEXISTENCE</span>
+            <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="hover:text-pink-500 transition-colors"><Linkedin className="w-4 h-4" /></a>
+            <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="hover:text-pink-500 transition-colors"><Facebook className="w-4 h-4" /></a>
+            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="hover:text-pink-500 transition-colors"><Instagram className="w-4 h-4" /></a>
+            <a href="https://wa.me" target="_blank" rel="noopener noreferrer" className="hover:text-pink-500 transition-colors"><MessageCircle className="w-4 h-4" /></a>
+            <span className="ml-2">SYSTEM STATE: SAFE_COEXISTENCE</span>
             <span>PORT_ENTRY: 3000</span>
           </div>
         </div>

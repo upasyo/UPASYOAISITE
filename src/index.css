@@ -10,7 +10,7 @@
   --color-brand-accent-pink: #f472b6; /* Richer pastel pink accent (tailwind pink-400) */
   --color-brand-cream: #faf9f6; /* Elegant Pure Cream */
   --color-brand-silver: #cbd5e1; /* Silver (slate-300) */
-  --color-brand-dark-base: #09090b; /* Pure neural dark depth */
+  --color-brand-dark-base: #18181b; /* Softer neural dark depth */
   --color-brand-dark-card: #121214; /* Deep dark card background */
 }
 
@@ -42,7 +42,7 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #09090b;
+  background: #18181b;
 }
 
 html:not(.dark) ::-webkit-scrollbar-track,
@@ -53,7 +53,7 @@ html:not([class*="dark"]) ::-webkit-scrollbar-track {
 ::-webkit-scrollbar-thumb {
   background: #1f1f23;
   border-radius: 9999px;
-  border: 3px solid #09090b;
+  border: 3px solid #18181b;
 }
 
 html:not(.dark) ::-webkit-scrollbar-thumb,
@@ -157,7 +157,7 @@ html:not([class*="dark"]) ::-webkit-scrollbar-thumb {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: #09090b;
+  background: #18181b;
   color: #ffffff;
   font-family: var(--font-mono);
   font-size: 11px;
@@ -173,7 +173,7 @@ html:not([class*="dark"]) ::-webkit-scrollbar-thumb {
 
 .dark .btn-primary-quantum {
   background: #ffffff;
-  color: #09090b;
+  color: #18181b;
 }
 
 .btn-primary-quantum:hover {
