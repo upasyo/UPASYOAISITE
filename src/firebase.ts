@@ -16,6 +16,8 @@ import {
   onSnapshot
 } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, User } from "firebase/auth";
+// @ts-ignore
+import swissAlpsImage from "./assets/images/swiss_alps_white_1782287887159.jpg";
 
 // Firebase Applet Configurations - read directly or fallback safely
 const firebaseConfig = {
@@ -57,7 +59,16 @@ export const SEED_DATA = {
     footerText: "© 2026 UPASYO. All cognitive assets and research algorithms reserved.",
     themePalette: "Pastel Pink Accent Theme",
     primaryColor: "#ffffff",
-    accentColor: "#fbcfe8"
+    accentColor: "#fbcfe8",
+    buttons: {
+      collab: { name: "DEPLOY COGNITIVE COLLAB", url: "#contact", color: "" },
+      resume: { name: "DOWNLOAD_RESUME", url: "#", color: "" },
+      inquiry: { name: "TRANSMIT_INQUIRY", url: "", color: "" },
+      readResearch: { name: "READ_RESEARCH_POST", url: "", color: "" },
+      citeAbs: { name: "CITE_ABS", url: "", color: "" },
+      resetPortal: { name: "RESET_TELEMETRY_PORTAL", url: "", color: "" },
+      dismissArticle: { name: "DISMISS_ARTICLE", url: "", color: "" }
+    }
   },
   heroSection: {
     id: "default",
@@ -65,7 +76,7 @@ export const SEED_DATA = {
     subtitle: "AI Scientist & Core Researcher in Foundation Models",
     description: "Pioneering the intersection of deep scaling laws, structural reasoning, and artificial general intelligence. Building transparent, mathematically rigorous neural architectures for modern cognitive science.",
     resumeUrl: "#",
-    profileImage: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=400&h=400"
+    profileImage: swissAlpsImage
   },
   aboutSection: {
     id: "default",

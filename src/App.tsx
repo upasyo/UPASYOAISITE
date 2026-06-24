@@ -44,10 +44,32 @@ import NetworkLogo from "./components/NetworkLogo";
 import NeuralBackground from "./components/NeuralBackground";
 import AIAssistant from "./components/AIAssistant";
 import AdminDashboard from "./components/AdminDashboard";
+import ButtonLinks from "./components/ButtonLinks";
 import Typewriter from "./components/Typewriter";
 import { useLocalStorageState } from "./hooks/useLocalStorage";
+import { TRANSLATIONS, CONTENT_TRANSLATIONS } from "./translations";
+// @ts-ignore
+import swissAlpsImage from "./assets/images/swiss_alps_white_1782287887159.jpg";
 
 export default function App() {
+  // Language preference state using LocalStorage helper
+  const [language, setLanguage] = useLocalStorageState<"en" | "other">("upasyo-lang", "en");
+
+  // Translation helper functions
+  const t = (key: string): string => {
+    return TRANSLATIONS[language]?.[key] || TRANSLATIONS["en"]?.[key] || key;
+  };
+
+  const getLocalizedContent = (sectionKey: string, currentData: any, itemUniqueKey?: string) => {
+    if (language === "en" || !currentData) return currentData;
+    const sectionTranslations = CONTENT_TRANSLATIONS[language]?.[itemUniqueKey || sectionKey];
+    if (!sectionTranslations) return currentData;
+    return {
+      ...currentData,
+      ...sectionTranslations
+    };
+  };
+
   // Theme state
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -108,10 +130,9 @@ export default function App() {
       setIsDarkMode(isDark);
       applyTheme(isDark);
     } else {
-      // Intelligent local device time tracking
-      const isNightTime = hours >= 18 || hours < 6; // Night time = Dark
-      setIsDarkMode(isNightTime);
-      applyTheme(isNightTime);
+      // Default to light mode (clean snowy Swiss Alps look) instead of hour tracking
+      setIsDarkMode(false);
+      applyTheme(false);
     }
   }, []);
 
@@ -184,7 +205,9 @@ export default function App() {
         console.error("Error fetching researchVision doc:", e);
       }
 
-      setSiteSettings(siteSnap ? { ...SEED_DATA.siteSettings, ...siteSnap } : SEED_DATA.siteSettings);
+      const loadedSiteSettings = siteSnap ? { ...SEED_DATA.siteSettings, ...siteSnap } : SEED_DATA.siteSettings;
+      loadedSiteSettings.buttons = { ...SEED_DATA.siteSettings.buttons, ...loadedSiteSettings.buttons };
+      setSiteSettings(loadedSiteSettings);
       setHero(heroSnap ? { ...SEED_DATA.heroSection, ...heroSnap } : SEED_DATA.heroSection);
       setAbout(aboutSnap ? { ...SEED_DATA.aboutSection, ...aboutSnap } : SEED_DATA.aboutSection);
       setResearchVision(visionSnap ? { ...SEED_DATA.researchVision, ...visionSnap } : SEED_DATA.researchVision);
@@ -272,11 +295,27 @@ export default function App() {
     }
   };
 
+  // Localized Content Instances
+  const localizedHero = getLocalizedContent("heroSection", hero);
+  const localizedAbout = getLocalizedContent("aboutSection", about);
+  const localizedResearchVision = getLocalizedContent("researchVision", researchVision);
+  const localizedResearchAreas = researchAreas.map((area, idx) => getLocalizedContent(`area${idx + 1}`, area, area.id));
+  const localizedProjects = projects.map((proj, idx) => getLocalizedContent(`proj${idx + 1}`, proj, proj.id));
+  const localizedPublications = publications.map((pub, idx) => getLocalizedContent(`pub${idx + 1}`, pub, pub.id));
+  const localizedAchievements = achievements.map((ach, idx) => getLocalizedContent(`ach${idx + 1}`, ach, ach.id));
+  const localizedBlogPosts = blogPosts.map((post, idx) => getLocalizedContent(`blog${idx + 1}`, post, post.id));
+
+  // Split ticker text from site settings or fallback to default
+  const tickerItems = (siteSettings.tickerText || "ARTIFICIAL GENERAL INTELLIGENCE, NEURO-SYMBOLIC REASONING, TRANSFORMER ATTENTION SCALING, MECHANISTIC INTERPRETABILITY, REINFORCEMENT LEARNING WITH AI FEEDBACK (RLAIF), ASSOCIATIVE RETRIEVAL TOPOLOGY, AI SAFETY & SYSTEM GUARANTEES")
+    .split(",")
+    .map((item: string) => item.trim())
+    .filter(Boolean);
+
   // List unique blog categories dynamically
-  const blogCategories = ["All", ...Array.from(new Set(blogPosts.map(post => post.category).filter(Boolean)))];
+  const blogCategories = ["All", ...Array.from(new Set(localizedBlogPosts.map(post => post.category).filter(Boolean)))];
 
   // Filter posts
-  const filteredBlogPosts = blogPosts.filter(post => {
+  const filteredBlogPosts = localizedBlogPosts.filter(post => {
     const matchesSearch = post.title?.toLowerCase().includes(blogSearch.toLowerCase()) || 
                           post.summary?.toLowerCase().includes(blogSearch.toLowerCase());
     const matchesCategory = selectedBlogCategory === "All" || post.category === selectedBlogCategory;
@@ -285,7 +324,7 @@ export default function App() {
 
   return (
     <div className={`min-h-screen relative font-sans overflow-x-hidden ${
-      isDarkMode ? "bg-brand-dark-base text-gray-200 selection:bg-pink-700/60" : "bg-white text-gray-800 selection:bg-pink-100"
+      isDarkMode ? "bg-brand-dark-base text-gray-200 selection:bg-pink-950 selection:text-pink-200" : "bg-white text-gray-800 selection:bg-pink-100"
     }`}>
       {/* Decorative Warm Cream / Pale Pink subtle background radial glow elements in light mode */}
       {!isDarkMode && (
@@ -476,7 +515,16 @@ export default function App() {
               {/* Profile Bio details */}
               <div className="flex-1 space-y-7 text-center lg:text-left">
                 <h2 className="text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-br from-zinc-950 via-zinc-800 to-zinc-600 dark:from-white dark:via-zinc-100 dark:to-zinc-300 bg-clip-text text-transparent font-display">
-                  {greeting},
+                  {(() => {
+                    const hours = new Date().getHours();
+                    let key = "Good Evening";
+                    if (hours < 12) {
+                      key = "Good Morning";
+                    } else if (hours < 17) {
+                      key = "Good Afternoon";
+                    }
+                    return t(key);
+                  })()},
                 </h2>
                 <div className="badge-quantum">
                   <span className="w-2 h-2 bg-pink-400 rounded-full animate-pulse" />
@@ -484,17 +532,26 @@ export default function App() {
                 </div>
 
                  <h1 className="text-4xl md:text-6.5xl font-bold tracking-tight bg-gradient-to-br from-zinc-950 via-zinc-800 to-zinc-600 dark:from-white dark:via-zinc-100 dark:to-zinc-300 bg-clip-text text-transparent font-display leading-[1.05] select-text">
-                  {hero.title || "Deciphering the Code of intelligence"}
+                  {localizedHero.title || "Deciphering the Code of intelligence"}
                 </h1>
                 
                 <div className="text-brand-accent-pink font-mono text-xs sm:text-sm font-semibold tracking-widest uppercase select-text h-[1.5em] flex items-center justify-center lg:justify-start">
                   <Typewriter 
-                    texts={[
-                      hero.subtitle || "AI Scientist & Core Researcher",
-                      "Neural Architect & Cognitive Theorist",
-                      "Multi-Agent Alignment Lead",
-                      "Neuro-Symbolic Pioneer"
-                    ]}
+                    texts={
+                      language === "other"
+                        ? [
+                            localizedHero.subtitle || "Científico de IA",
+                            "Arquitecto Neural",
+                            "Líder de Alineación Multi-Agente",
+                            "Pionero Neuro-Simbólico"
+                          ]
+                        : [
+                            localizedHero.subtitle || "AI Scientist & Core Researcher",
+                            "Neural Architect & Cognitive Theorist",
+                            "Multi-Agent Alignment Lead",
+                            "Neuro-Symbolic Pioneer"
+                          ]
+                    }
                     delay={80}
                     period={2500}
                     className="tracking-widest"
@@ -502,18 +559,31 @@ export default function App() {
                 </div>
                 
                 <p className="text-zinc-700 dark:text-zinc-300 text-base md:text-lg max-w-xl leading-relaxed select-text font-light">
-                  {hero.description || "Building robust, self-aligned algorithmic transformers capable of multi-layered relational mapping and secure cognitive integration."}
+                  {localizedHero.description || "Building robust, self-aligned algorithmic transformers capable of multi-layered relational mapping and secure cognitive integration."}
                 </p>
 
                 <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-2">
-                  <a href="#contact" className="btn-primary-quantum">
-                    DEPLOY COGNITIVE COLLAB
-                    <ArrowRight className="w-4 h-4 text-brand-accent-pink" />
-                  </a>
-                  <a href={hero.resumeUrl || "#"} className="btn-secondary-quantum">
-                    <FileText className="w-4 h-4 text-zinc-400" />
-                    DOWNLOAD_RESUME
-                  </a>
+                  {siteSettings?.buttons?.collab?.enabled !== false && (
+                    <a 
+                      href={siteSettings?.buttons?.collab?.url || "#contact"} 
+                      className="btn-primary-quantum"
+                      style={siteSettings?.buttons?.collab?.color ? { backgroundColor: siteSettings.buttons.collab.color, borderColor: siteSettings.buttons.collab.color } : {}}
+                    >
+                      {t(siteSettings?.buttons?.collab?.name || "DEPLOY COGNITIVE COLLAB")}
+                      <ArrowRight className="w-4 h-4 text-brand-accent-pink" />
+                    </a>
+                  )}
+                  {siteSettings?.buttons?.resume?.enabled !== false && (
+                    <a 
+                      href={siteSettings?.buttons?.resume?.url || localizedHero.resumeUrl || "#"} 
+                      className="btn-secondary-quantum"
+                      style={siteSettings?.buttons?.resume?.color ? { backgroundColor: siteSettings.buttons.resume.color, borderColor: siteSettings.buttons.resume.color } : {}}
+                    >
+                      <FileText className="w-4 h-4 text-zinc-400" />
+                      {t(siteSettings?.buttons?.resume?.name || "DOWNLOAD_RESUME")}
+                    </a>
+                  )}
+                  <ButtonLinks />
                 </div>
               </div>
 
@@ -521,21 +591,21 @@ export default function App() {
               <div className="relative w-64 h-64 sm:w-80 sm:h-80 flex-shrink-0 flex items-center justify-center select-none">
                 {/* Metallic Silver and Pastel Pink concentric accent frames */}
                 <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-brand-silver via-zinc-200 dark:via-zinc-800 to-brand-pink animate-spin" style={{ animationDuration: '24s' }} />
-                <div className="absolute inset-2 bg-white dark:bg-brand-dark-base rounded-full" />
-                <div className="absolute inset-3.5 rounded-full overflow-hidden border border-zinc-100 dark:border-zinc-800/80 shadow-2xl">
+                <div className="absolute inset-2 bg-white rounded-full" />
+                <div className="absolute inset-3.5 rounded-full overflow-hidden border border-zinc-100 dark:border-zinc-800/80 shadow-2xl bg-white">
                   <img
                     referrerPolicy="no-referrer"
-                    src={hero.profileImage || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d"}
+                    src={(localizedHero.profileImage && !localizedHero.profileImage.includes("photo-1507003211169-0a1dd7228f2d") && localizedHero.profileImage !== "#") ? localizedHero.profileImage : swissAlpsImage}
                     alt="UPASYO Profile Photograph"
-                    className="w-full h-full object-cover opacity-90 transition-all duration-300 hover:scale-105 active:scale-105"
+                    className="w-full h-full object-cover opacity-95 transition-all duration-300 hover:scale-105 active:scale-105"
                   />
                 </div>
                 {/* Micro-metrics overlays around the picture */}
                 <div className="absolute top-2 right-2 bg-white/90 dark:bg-zinc-900/90 border border-zinc-200/50 dark:border-zinc-800/80 px-2.5 py-1 rounded-md text-[9px] font-mono text-zinc-650 dark:text-zinc-350 font-semibold select-none flex items-center gap-1 shadow-xs animate-pulse">
-                  <CheckCircle2 className="w-3 h-3 text-pink-400" /> FACTUAL_ACCURACY: 99.8%
+                  <CheckCircle2 className="w-3 h-3 text-brand-accent-pink" /> {t(siteSettings.factualAccuracy ? `FACTUAL_ACCURACY: ${siteSettings.factualAccuracy}` : "FACTUAL_ACCURACY: 99.8%")}
                 </div>
                 <div className="absolute bottom-2 left-2 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md border border-zinc-200/50 dark:border-zinc-800/80 px-2.5 py-1 rounded-md text-[9px] font-mono text-zinc-650 dark:text-zinc-350 font-semibold select-none flex items-center gap-1 shadow-xs">
-                  <Database className="w-3 h-3 text-brand-accent-pink" /> STORAGE: ONLINE
+                  <Database className="w-3 h-3 text-brand-accent-pink" /> {t(siteSettings.storageStatus ? `STORAGE: ${siteSettings.storageStatus}` : "STORAGE: ONLINE")}
                 </div>
               </div>
             </motion.section>
@@ -543,34 +613,12 @@ export default function App() {
             {/* SCROLLING TECHNICAL TICKER */}
             <div className="w-full overflow-hidden bg-brand-cream/10 dark:bg-brand-dark-card/30 border-y border-zinc-150/40 dark:border-zinc-900/80 py-5 select-none font-mono">
               <div className="animate-scrolling-ticker flex gap-12 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400">
-                <span>ARTIFICIAL GENERAL INTELLIGENCE</span>
-                <span className="text-brand-accent-pink">•</span>
-                <span>NEURO-SYMBOLIC REASONING</span>
-                <span className="text-brand-accent-pink">•</span>
-                <span>TRANSFORMER ATTENTION SCALING</span>
-                <span className="text-brand-accent-pink">•</span>
-                <span>MECHANISTIC INTERPRETABILITY</span>
-                <span className="text-brand-accent-pink">•</span>
-                <span>REINFORCEMENT LEARNING WITH AI FEEDBACK (RLAIF)</span>
-                <span className="text-brand-accent-pink">•</span>
-                <span>ASSOCIATIVE RETRIEVAL TOPOLOGY</span>
-                <span className="text-brand-accent-pink">•</span>
-                <span>AI SAFETY & SYSTEM GUARANTEES</span>
-                <span className="text-brand-accent-pink">•</span>
-                {/* Double to enable endless loop */}
-                <span>ARTIFICIAL GENERAL INTELLIGENCE</span>
-                <span className="text-brand-accent-pink">•</span>
-                <span>NEURO-SYMBOLIC REASONING</span>
-                <span className="text-brand-accent-pink">•</span>
-                <span>TRANSFORMER ATTENTION SCALING</span>
-                <span className="text-brand-accent-pink">•</span>
-                <span>MECHANISTIC INTERPRETABILITY</span>
-                <span className="text-brand-accent-pink">•</span>
-                <span>REINFORCEMENT LEARNING WITH AI FEEDBACK (RLAIF)</span>
-                <span className="text-brand-accent-pink">•</span>
-                <span>ASSOCIATIVE RETRIEVAL TOPOLOGY</span>
-                <span className="text-brand-accent-pink">•</span>
-                <span>AI SAFETY & SYSTEM GUARANTEES</span>
+                {[...tickerItems, ...tickerItems].map((item, idx) => (
+                  <React.Fragment key={idx}>
+                    <span>{t(item)}</span>
+                    {idx < (tickerItems.length * 2 - 1) && <span className="text-brand-accent-pink">•</span>}
+                  </React.Fragment>
+                ))}
               </div>
             </div>
 
@@ -584,20 +632,20 @@ export default function App() {
               transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
             >
               <div className="lg:col-span-4 font-mono select-none">
-                <span className="text-brand-accent-pink text-xs font-bold uppercase tracking-widest block mb-1">01 / SYSTEM_BIO</span>
-                <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white uppercase font-display">SCIENTIFIC DISCIPLINE</h2>
+                <span className="text-brand-accent-pink text-xs font-bold uppercase tracking-widest block mb-1">01 / {t("SYSTEM_BIO")}</span>
+                <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white uppercase font-display">{t("SCIENTIFIC DISCIPLINE")}</h2>
                 <div className="w-12 h-[2.5px] bg-brand-accent-pink mt-4" />
               </div>
 
               <div className="lg:col-span-8 space-y-7 select-text text-zinc-700 dark:text-zinc-300">
                 <p className="text-base sm:text-lg leading-relaxed font-medium font-sans text-zinc-900 dark:text-zinc-100">
-                  {about.bio || "Pioneering experimental training architectures across high-performance TPU layouts. My goals center around creating transparent cognitive structures that do not degrade in logical correctness."}
+                  {localizedAbout.bio || "Pioneering experimental training architectures across high-performance TPU layouts. My goals center around creating transparent cognitive structures that do not degrade in logical correctness."}
                 </p>
 
                 <div>
-                  <h4 className="text-xs font-mono font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-widest mb-4">CORE TECHNICAL SPECIALIZATIONS</h4>
+                  <h4 className="text-xs font-mono font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-widest mb-4">{t("CORE TECHNICAL SPECIALIZATIONS")}</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                    {about.skills?.map((skill: string, index: number) => (
+                    {localizedAbout.skills?.map((skill: string, index: number) => (
                       <motion.div 
                         key={index} 
                         initial={{ opacity: 0, y: 15 }}
@@ -626,8 +674,8 @@ export default function App() {
             >
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start font-mono select-none">
                 <div className="lg:col-span-4">
-                  <span className="text-brand-accent-pink text-xs font-bold uppercase tracking-widest block mb-1">02 / RESEARCH_METRICS</span>
-                  <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white uppercase font-display">VISION & FOCUS AREAS</h2>
+                  <span className="text-brand-accent-pink text-xs font-bold uppercase tracking-widest block mb-1">02 / {t("RESEARCH_METRICS")}</span>
+                  <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white uppercase font-display">{t("VISION & FOCUS AREAS")}</h2>
                   <div className="w-12 h-[2.5px] bg-brand-accent-pink mt-4" />
                 </div>
               </div>
@@ -635,17 +683,17 @@ export default function App() {
               {/* Research Vision paragraph layout */}
               <div className="bg-brand-cream/15 dark:bg-[#121214]/50 border border-zinc-150/40 dark:border-zinc-900/80 p-6 md:p-8 rounded-2xl md:rounded-3xl shadow-xs space-y-4">
                 <h3 className="font-mono text-sm md:text-base font-bold text-brand-accent-pink uppercase select-text tracking-wide">
-                  {researchVision.title || "COGNITIVE ALIGNMENT TARGETS"}
+                  {localizedResearchVision.title || "COGNITIVE ALIGNMENT TARGETS"}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-zinc-900 dark:text-zinc-100 leading-relaxed font-medium select-text">
-                  <p>{researchVision.paragraph1}</p>
-                  <p>{researchVision.paragraph2}</p>
+                  <p>{localizedResearchVision.paragraph1}</p>
+                  <p>{localizedResearchVision.paragraph2}</p>
                 </div>
               </div>
 
               {/* Interactive Focus area cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {researchAreas.map((area, index) => (
+                {localizedResearchAreas.map((area, index) => (
                   <motion.div
                     key={area.id}
                     initial={{ opacity: 0, y: 25 }}
@@ -685,14 +733,14 @@ export default function App() {
             >
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start font-mono select-none">
                 <div className="lg:col-span-4">
-                  <span className="text-brand-accent-pink text-xs font-bold uppercase tracking-widest block mb-1">03 / CODE_ORBITS</span>
-                  <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white uppercase font-display">APPLIED EMBEDDED SYSTEMS</h2>
+                  <span className="text-brand-accent-pink text-xs font-bold uppercase tracking-widest block mb-1">03 / {t("CODE_ORBITS")}</span>
+                  <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white uppercase font-display">{t("APPLIED EMBEDDED SYSTEMS")}</h2>
                   <div className="w-12 h-[2.5px] bg-brand-accent-pink mt-4" />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {projects.map((proj, index) => (
+                {localizedProjects.map((proj, index) => (
                   <motion.div
                     key={proj.id}
                     initial={{ opacity: 0, y: 25 }}
@@ -751,7 +799,7 @@ export default function App() {
                     </div>
 
                     <div className="border-t border-zinc-200/60 dark:border-zinc-800 pt-4 mt-6">
-                      <div className="text-[9px] font-mono text-zinc-400 uppercase tracking-widest mb-1 select-none">SCIENTIFIC IMPACT METRICS</div>
+                      <div className="text-[9px] font-mono text-zinc-400 uppercase tracking-widest mb-1 select-none">{t("SCIENTIFIC IMPACT METRICS")}</div>
                       <p className="text-xs font-mono font-bold text-zinc-900 dark:text-zinc-200">{proj.impact}</p>
                     </div>
                   </motion.div>
@@ -770,14 +818,14 @@ export default function App() {
             >
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start font-mono select-none">
                 <div className="lg:col-span-4">
-                  <span className="text-brand-accent-pink text-xs font-bold uppercase tracking-widest block mb-1">04 / BIBLIOGRAPHY_CITE</span>
-                  <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white uppercase font-display">SELECTED PUBLICATIONS</h2>
+                  <span className="text-brand-accent-pink text-xs font-bold uppercase tracking-widest block mb-1">04 / {t("BIBLIOGRAPHY_CITE")}</span>
+                  <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white uppercase font-display">{t("SELECTED PUBLICATIONS")}</h2>
                   <div className="w-12 h-[2.5px] bg-brand-accent-pink mt-4" />
                 </div>
               </div>
 
               <div className="space-y-4">
-                {publications.map((p, index) => (
+                {localizedPublications.map((p, index) => (
                   <motion.div 
                     key={p.id}
                     initial={{ opacity: 0, y: 15 }}
@@ -792,7 +840,7 @@ export default function App() {
                         "{p.title}"
                       </h4>
                       <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono tracking-wide uppercase">
-                        AUTHORS: <span className="text-zinc-800 dark:text-zinc-200 font-sans normal-case font-light text-xs">{p.authors}</span>
+                        {t("AUTHORS:")} <span className="text-zinc-800 dark:text-zinc-200 font-sans normal-case font-light text-xs">{p.authors}</span>
                       </p>
                       <p className="text-[10px] sm:text-xs font-semibold text-brand-accent-pink font-mono tracking-widest uppercase">
                         {p.venue}
@@ -801,12 +849,13 @@ export default function App() {
 
                     <div className="flex items-center gap-4.5 flex-shrink-0 font-mono text-xs">
                       <span className="text-zinc-500 dark:text-zinc-400">{p.date}</span>
-                      {p.url && (
+                      {p.url && siteSettings?.buttons?.citeAbs?.enabled !== false && (
                         <a 
                           href={p.url}
                           className="flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 hover:border-brand-accent-pink px-3.5 py-1.5 rounded-lg font-bold hover:text-brand-accent-pink transition-all text-[11px] tracking-wide cursor-pointer"
+                          style={siteSettings?.buttons?.citeAbs?.color ? { backgroundColor: siteSettings.buttons.citeAbs.color, borderColor: siteSettings.buttons.citeAbs.color } : {}}
                         >
-                          CITE_ABS <ExternalLink className="w-3 h-3" />
+                          {t(siteSettings?.buttons?.citeAbs?.name || "CITE_ABS")} <ExternalLink className="w-3 h-3" />
                         </a>
                       )}
                     </div>
@@ -826,14 +875,14 @@ export default function App() {
             >
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start font-mono select-none">
                 <div className="lg:col-span-4">
-                  <span className="text-brand-accent-pink text-xs font-bold uppercase tracking-widest block mb-1">05 / RECOGNITION_BOARD</span>
-                  <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white uppercase font-display">ACCOLADES & MILESTONES</h2>
+                  <span className="text-brand-accent-pink text-xs font-bold uppercase tracking-widest block mb-1">05 / {t("RECOGNITION_BOARD")}</span>
+                  <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white uppercase font-display">{t("ACCOLADES & MILESTONES")}</h2>
                   <div className="w-12 h-[2.5px] bg-brand-accent-pink mt-4" />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {achievements.map((ach, index) => (
+                {localizedAchievements.map((ach, index) => (
                   <motion.div 
                     key={ach.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -871,8 +920,8 @@ export default function App() {
             >
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-end justify-between border-b border-zinc-150/50 dark:border-zinc-900 pb-5 font-mono">
                 <div className="lg:col-span-5 select-none">
-                  <span className="text-brand-accent-pink text-xs font-bold uppercase tracking-widest block mb-1">06 / REASON_POSTS</span>
-                  <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white uppercase font-display">SCIENTIFIC RESEARCH BLOG</h2>
+                  <span className="text-brand-accent-pink text-xs font-bold uppercase tracking-widest block mb-1">06 / {t("REASON_POSTS")}</span>
+                  <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white uppercase font-display">{t("SCIENTIFIC RESEARCH BLOG")}</h2>
                   <div className="w-12 h-[2.5px] bg-brand-accent-pink mt-4" />
                 </div>
 
@@ -881,10 +930,10 @@ export default function App() {
                   <div className="relative flex-1">
                     <input
                       type="text"
-                      placeholder="Telemetry keyword search..."
+                      placeholder={t("Telemetry keyword search...")}
                       value={blogSearch}
                       onChange={(e) => setBlogSearch(e.target.value)}
-                      className="w-full bg-slate-50/70 dark:bg-zinc-900/40 border border-zinc-200/60 dark:border-zinc-800 rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-pink-300 dark:text-white transition-all shadow-xs"
+                      className="w-full bg-slate-50/70 dark:bg-zinc-900/40 border border-zinc-200/60 dark:border-zinc-800 rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-brand-accent-pink dark:text-white transition-all shadow-xs"
                     />
                     <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
                   </div>
@@ -896,11 +945,11 @@ export default function App() {
                         onClick={() => setSelectedBlogCategory(cat)}
                         className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold uppercase cursor-pointer whitespace-nowrap transition-all ${
                           selectedBlogCategory === cat 
-                            ? "bg-slate-900 dark:bg-pink-100 text-white dark:text-slate-950 shadow-xs" 
+                            ? "bg-slate-900 dark:bg-brand-pink text-white dark:text-slate-950 shadow-xs" 
                             : "bg-slate-50/60 dark:bg-zinc-900/50 text-zinc-650 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
                         }`}
                       >
-                        {cat}
+                        {cat === "All" ? t("All") : cat}
                       </button>
                     ))}
                   </div>
@@ -910,7 +959,7 @@ export default function App() {
               {/* Dynamic blog grid */}
               {filteredBlogPosts.length === 0 ? (
                 <p className="text-center text-xs font-mono text-zinc-400 py-12 select-none">
-                  No research entries locate coordinates matching constraints.
+                  {t("No research entries locate coordinates matching constraints.")}
                 </p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -960,15 +1009,18 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div className="p-6 md:px-8 md:pb-8 border-t border-zinc-200/60 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/20 dark:bg-zinc-900/10">
-                        <button
-                          onClick={() => setActiveBlogArticle(post)}
-                          className="text-xs font-mono font-bold text-gray-900 dark:text-white tracking-widest flex items-center gap-1 group-hover:text-brand-accent-pink cursor-pointer"
-                        >
-                          READ_RESEARCH_POST
-                          <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1.5 transition-transform" />
-                        </button>
-                      </div>
+                      {siteSettings?.buttons?.readResearch?.enabled !== false && (
+                        <div className="p-6 md:px-8 md:pb-8 border-t border-zinc-200/60 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/20 dark:bg-zinc-900/10">
+                          <button
+                            onClick={() => setActiveBlogArticle(post)}
+                            className="text-xs font-mono font-bold tracking-widest flex items-center gap-1 cursor-pointer transition-colors"
+                            style={siteSettings?.buttons?.readResearch?.color ? { color: siteSettings.buttons.readResearch.color } : { color: "var(--color-zinc-950)" }}
+                          >
+                            {t(siteSettings?.buttons?.readResearch?.name || "READ_RESEARCH_POST")}
+                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1.5 transition-transform" />
+                          </button>
+                        </div>
+                      )}
                     </motion.article>
                   ))}
                 </div>
@@ -986,12 +1038,12 @@ export default function App() {
             >
               {/* Context text left */}
               <div className="lg:col-span-5 space-y-4 font-mono select-none">
-                <span className="text-brand-accent-pink text-xs font-bold uppercase tracking-widest block mb-1">07 / DIRECT_ACCESS</span>
-                <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white uppercase leading-none font-display">COLLABORATIVE ROUTER</h2>
+                <span className="text-brand-accent-pink text-xs font-bold uppercase tracking-widest block mb-1">07 / {t("DIRECT_ACCESS")}</span>
+                <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white uppercase leading-none font-display">{t("COLLABORATIVE ROUTER")}</h2>
                 <div className="w-12 h-[2.5px] bg-brand-accent-pink mt-4" />
                 
                 <p className="text-xs sm:text-sm text-zinc-650 dark:text-zinc-300 font-light leading-relaxed select-text font-sans pt-3">
-                  Are you managing foundation architectures or investigating neural alignment barriers? Establish a diagnostic link. Submissions write immediately to active Firestore messaging indexes.
+                  {t("Are you managing foundation architectures or investigating neural alignment barriers? Establish a diagnostic link. Submissions write immediately to active Firestore messaging indexes.")}
                 </p>
 
                 <div className="space-y-2 pt-4 font-mono text-xs text-zinc-700 dark:text-zinc-300">
@@ -1013,85 +1065,91 @@ export default function App() {
                     <div className="w-12 h-12 rounded-full bg-pink-100 dark:bg-pink-900/30 border border-pink-200 text-brand-accent-pink flex items-center justify-center">
                       <CheckCircle2 className="w-6 h-6 animate-bounce" />
                     </div>
-                    <h3 className="font-mono text-sm font-bold uppercase tracking-wider text-gray-950 dark:text-white">COGNITIVE TUNNEL READY</h3>
+                    <h3 className="font-mono text-sm font-bold uppercase tracking-wider text-gray-950 dark:text-white">{t("COGNITIVE TUNNEL READY")}</h3>
                     <p className="text-xs text-zinc-650 dark:text-zinc-300 max-w-sm font-sans select-text">
-                      Your entry variables were recorded onto active indexes successfully. {(siteSettings.brandName || "UPASYO")}'s scheduling algorithms will assess parameters shortly.
+                      {t("Your entry variables were recorded onto active indexes successfully. UPASYO's scheduling algorithms will assess parameters shortly.")}
                     </p>
-                    <button
-                      onClick={() => setContactSuccess(false)}
-                      className="text-xs font-mono font-bold text-brand-accent-pink cursor-pointer uppercase tracking-widest hover:underline"
-                    >
-                      RESET_TELEMETRY_PORTAL
-                    </button>
+                    {siteSettings?.buttons?.resetPortal?.enabled !== false && (
+                      <button
+                        onClick={() => setContactSuccess(false)}
+                        className="text-xs font-mono font-bold cursor-pointer uppercase tracking-widest hover:underline"
+                        style={siteSettings?.buttons?.resetPortal?.color ? { color: siteSettings.buttons.resetPortal.color } : { color: "var(--color-brand-accent-pink)" }}
+                      >
+                        {t(siteSettings?.buttons?.resetPortal?.name || "RESET_TELEMETRY_PORTAL")}
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <form onSubmit={handleContactSubmit} className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-[10px] font-mono font-bold text-zinc-500 dark:text-zinc-450 uppercase mb-1.5 tracking-wider">VISITOR_NAME</label>
+                        <label className="block text-[10px] font-mono font-bold text-zinc-550 dark:text-zinc-450 uppercase mb-1.5 tracking-wider">{t("VISITOR_NAME")}</label>
                         <input
                           type="text"
                           required
                           value={contactName}
                           onChange={(e) => setContactName(e.target.value)}
-                          placeholder="e.g. Dr. Vance"
-                          className="w-full bg-white dark:bg-zinc-900/50 border border-zinc-200/50 dark:border-zinc-800 rounded-xl px-4 py-2.5 text-sm dark:text-white focus:outline-none focus:border-pink-300 transition-colors shadow-xs"
+                          placeholder={t("e.g. Dr. Vance")}
+                          className="w-full bg-white dark:bg-zinc-900/50 border border-zinc-200/50 dark:border-zinc-800 rounded-xl px-4 py-2.5 text-sm dark:text-white focus:outline-none focus:border-brand-accent-pink transition-colors shadow-xs"
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-mono font-bold text-zinc-500 dark:text-zinc-450 uppercase mb-1.5 tracking-wider">INQUIRY_COORD_EMAIL</label>
+                        <label className="block text-[10px] font-mono font-bold text-zinc-550 dark:text-zinc-450 uppercase mb-1.5 tracking-wider">{t("INQUIRY_COORD_EMAIL")}</label>
                         <input
                           type="email"
                           required
                           value={contactEmail}
                           onChange={(e) => setContactEmail(e.target.value)}
-                          placeholder="vance@cognitive.org"
-                          className="w-full bg-white dark:bg-zinc-900/50 border border-zinc-200/50 dark:border-zinc-800 rounded-xl px-4 py-2.5 text-sm dark:text-white focus:outline-none focus:border-pink-300 transition-colors shadow-xs"
+                          placeholder={t("vance@cognitive.org")}
+                          className="w-full bg-white dark:bg-zinc-900/50 border border-zinc-200/50 dark:border-zinc-800 rounded-xl px-4 py-2.5 text-sm dark:text-white focus:outline-none focus:border-brand-accent-pink transition-colors shadow-xs"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-mono font-bold text-zinc-500 dark:text-zinc-450 uppercase mb-1.5 tracking-wider">SUBJECT_INDEX</label>
+                      <label className="block text-[10px] font-mono font-bold text-zinc-550 dark:text-zinc-450 uppercase mb-1.5 tracking-wider">{t("SUBJECT_INDEX")}</label>
                       <input
                         type="text"
                         value={contactSubject}
                         onChange={(e) => setContactSubject(e.target.value)}
-                        placeholder="e.g. Distributed Alignment safeguards"
-                        className="w-full bg-white dark:bg-zinc-900/50 border border-zinc-200/50 dark:border-zinc-800 rounded-xl px-4 py-2.5 text-sm dark:text-white focus:outline-none focus:border-pink-300 transition-colors shadow-xs"
+                        placeholder={t("e.g. Distributed Alignment safeguards")}
+                        className="w-full bg-white dark:bg-zinc-900/50 border border-zinc-200/50 dark:border-zinc-800 rounded-xl px-4 py-2.5 text-sm dark:text-white focus:outline-none focus:border-brand-accent-pink transition-colors shadow-xs"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-mono font-bold text-zinc-500 dark:text-zinc-450 uppercase mb-1.5 tracking-wider">TELEMETRY_MESSAGE</label>
+                      <label className="block text-[10px] font-mono font-bold text-zinc-550 dark:text-zinc-450 uppercase mb-1.5 tracking-wider">{t("TELEMETRY_MESSAGE")}</label>
                       <textarea
                         required
                         rows={4}
                         value={contactMessage}
                         onChange={(e) => setContactMessage(e.target.value)}
-                        placeholder="Describe parameters of computational framework..."
-                        className="w-full bg-white dark:bg-zinc-900/50 border border-zinc-200/50 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm dark:text-white focus:outline-none focus:border-pink-300 transition-colors shadow-xs"
+                        placeholder={t("Describe parameters of computational framework...")}
+                        className="w-full bg-white dark:bg-zinc-900/50 border border-zinc-200/50 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm dark:text-white focus:outline-none focus:border-brand-accent-pink transition-colors shadow-xs"
                       />
                     </div>
 
                     {contactError && (
                       <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-250/40 rounded-xl font-mono text-[11px] text-red-600 dark:text-red-400">
-                        TRANSMISSION_ERROR: Firestore record allocation failed. Verify connection metrics.
+                        {t("TRANSMISSION_ERROR: Firestore record allocation failed. Verify connection metrics.")}
                       </div>
                     )}
 
-                    <button
-                      type="submit"
-                      disabled={contactLoading}
-                      className="btn-primary-quantum w-full sm:w-auto"
-                    >
-                      {contactLoading ? (
-                        <Cpu className="w-4 h-4 animate-spin text-brand-accent-pink" />
-                      ) : (
-                        <Send className="w-4 h-4 text-brand-accent-pink" />
-                      )}
-                      TRANSMIT_INQUIRY
-                    </button>
+                    {siteSettings?.buttons?.inquiry?.enabled !== false && (
+                      <button
+                        type="submit"
+                        disabled={contactLoading}
+                        className="btn-primary-quantum w-full sm:w-auto"
+                        style={siteSettings?.buttons?.inquiry?.color ? { backgroundColor: siteSettings.buttons.inquiry.color, borderColor: siteSettings.buttons.inquiry.color } : {}}
+                      >
+                        {contactLoading ? (
+                          <Cpu className="w-4 h-4 animate-spin text-brand-accent-pink" />
+                        ) : (
+                          <Send className="w-4 h-4 text-brand-accent-pink" />
+                        )}
+                        {t(siteSettings?.buttons?.inquiry?.name || "TRANSMIT_INQUIRY")}
+                      </button>
+                    )}
                   </form>
                 )}
               </div>
@@ -1104,16 +1162,18 @@ export default function App() {
       <footer className="border-t border-zinc-100 dark:border-zinc-900 py-12 bg-zinc-50/50 dark:bg-brand-dark-base select-none">
         <div className="max-w-7xl mx-auto px-5 md:px-10 flex flex-col sm:flex-row items-center justify-between gap-6 font-mono text-xs text-zinc-500 dark:text-zinc-400">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 bg-pink-400 rounded-full animate-ping" />
+            <span className="w-2 h-2 bg-brand-accent-pink rounded-full animate-ping" />
             <span>{siteSettings.footerText || "© 2026 UPASYO. All intellectual resources reserved."}</span>
           </div>
           <div className="flex items-center gap-4 text-[10px]">
-            <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="hover:text-pink-500 transition-colors"><Linkedin className="w-4 h-4" /></a>
-            <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="hover:text-pink-500 transition-colors"><Facebook className="w-4 h-4" /></a>
-            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="hover:text-pink-500 transition-colors"><Instagram className="w-4 h-4" /></a>
-            <a href="https://wa.me" target="_blank" rel="noopener noreferrer" className="hover:text-pink-500 transition-colors"><MessageCircle className="w-4 h-4" /></a>
-            <span className="ml-2">SYSTEM STATE: SAFE_COEXISTENCE</span>
-            <span>PORT_ENTRY: 3000</span>
+            <a href={siteSettings.linkedinUrl || "https://linkedin.com"} target="_blank" rel="noopener noreferrer" className="hover:text-brand-accent-pink transition-colors" title="LinkedIn Profile"><Linkedin className="w-4 h-4" /></a>
+            <a href={siteSettings.githubUrl || "https://github.com"} target="_blank" rel="noopener noreferrer" className="hover:text-brand-accent-pink transition-colors" title="GitHub Profile"><Github className="w-4 h-4" /></a>
+            <a href={siteSettings.facebookUrl || "https://facebook.com"} target="_blank" rel="noopener noreferrer" className="hover:text-brand-accent-pink transition-colors" title="Facebook Page"><Facebook className="w-4 h-4" /></a>
+            <a href={siteSettings.instagramUrl || "https://instagram.com"} target="_blank" rel="noopener noreferrer" className="hover:text-brand-accent-pink transition-colors" title="Instagram Profile"><Instagram className="w-4 h-4" /></a>
+            <a href={siteSettings.whatsappUrl || "https://wa.me"} target="_blank" rel="noopener noreferrer" className="hover:text-brand-accent-pink transition-colors" title="WhatsApp Contact"><MessageCircle className="w-4 h-4" /></a>
+            
+            <span className="ml-2">{t(siteSettings.systemState ? `SYSTEM STATE: ${siteSettings.systemState}` : "SYSTEM STATE: SAFE_COEXISTENCE")}</span>
+            <span>{t(siteSettings.portEntry ? `PORT_ENTRY: ${siteSettings.portEntry}` : "PORT_ENTRY: 3000")}</span>
           </div>
         </div>
       </footer>
@@ -1178,7 +1238,7 @@ export default function App() {
               {/* Dynamic AI summary helper */}
               <div className="bg-brand-cream/40 dark:bg-zinc-900/40 border border-pink-100/30 rounded-xl p-4 md:p-5 space-y-2">
                 <h4 className="text-[10px] font-mono font-bold text-brand-accent-pink flex items-center gap-1.5 uppercase">
-                  <Sparkles className="w-3.5 h-3.5" /> COGNITIVE SUMMARY SYNOPSIS
+                  <Sparkles className="w-3.5 h-3.5" /> {t("COGNITIVE SUMMARY SYNOPSIS")}
                 </h4>
                 <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed italic">
                   {activeBlogArticle.summary}
@@ -1192,12 +1252,15 @@ export default function App() {
 
               {/* Reader Progress indicator bottom bar */}
               <div className="flex justify-end pt-6 border-t border-zinc-100 dark:border-zinc-800">
-                <button
-                  onClick={() => setActiveBlogArticle(null)}
-                  className="bg-slate-900 dark:bg-white text-white dark:text-gray-950 font-mono font-bold text-xs uppercase px-5 py-3 rounded-xl cursor-pointer"
-                >
-                  DISMISS_ARTICLE
-                </button>
+                {siteSettings?.buttons?.dismissArticle?.enabled !== false && (
+                  <button
+                    onClick={() => setActiveBlogArticle(null)}
+                    className={siteSettings?.buttons?.dismissArticle?.color ? "font-mono font-bold text-xs uppercase px-5 py-3 rounded-xl cursor-pointer text-white" : "bg-slate-900 dark:bg-white text-white dark:text-gray-950 font-mono font-bold text-xs uppercase px-5 py-3 rounded-xl cursor-pointer"}
+                    style={siteSettings?.buttons?.dismissArticle?.color ? { backgroundColor: siteSettings.buttons.dismissArticle.color } : {}}
+                  >
+                    {t(siteSettings?.buttons?.dismissArticle?.name || "DISMISS_ARTICLE")}
+                  </button>
+                )}
               </div>
             </motion.div>
           </motion.div>

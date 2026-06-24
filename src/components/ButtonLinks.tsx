@@ -24,7 +24,7 @@ export default function ButtonLinks() {
   if (links.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-4 mt-6">
+    <>
       {links.map((link) => (
         <a
           key={link.id}
@@ -32,11 +32,11 @@ export default function ButtonLinks() {
           target="_blank"
           rel="noopener noreferrer"
           className="px-6 py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90"
-          style={{ backgroundColor: link.color }}
+          style={{ backgroundColor: link.color || "#e11d48" }}
         >
           {link.name}
         </a>
       ))}
-    </div>
+    </>
   );
 }

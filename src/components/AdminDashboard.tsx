@@ -108,7 +108,9 @@ export default function AdminDashboard({
     const aboutSnap = await fetchDoc(COLLECTIONS.ABOUT, "default");
     const visionSnap = await fetchDoc(COLLECTIONS.RESEARCH_VISION, "default");
 
-    setSiteSettings(siteSnap ? { ...SEED_DATA.siteSettings, ...siteSnap } : SEED_DATA.siteSettings);
+    const loadedSite = siteSnap ? { ...SEED_DATA.siteSettings, ...siteSnap } : SEED_DATA.siteSettings;
+    loadedSite.buttons = { ...SEED_DATA.siteSettings.buttons, ...loadedSite.buttons };
+    setSiteSettings(loadedSite);
     setHero(heroSnap ? { ...SEED_DATA.heroSection, ...heroSnap } : SEED_DATA.heroSection);
     setAbout(aboutSnap ? { ...SEED_DATA.aboutSection, ...aboutSnap } : SEED_DATA.aboutSection);
     setResearchVision(visionSnap ? { ...SEED_DATA.researchVision, ...visionSnap } : SEED_DATA.researchVision);
@@ -266,6 +268,19 @@ export default function AdminDashboard({
       triggerStatus("success", "Research blog paper added successfully.");
     } catch (err) {
       triggerStatus("error", "Failed to add research blog paper.");
+    }
+  };
+
+  const handleAddKnowledge = async () => {
+    if (!newKb.content) return;
+    try {
+      const id = "kb_" + Date.now();
+      await updateOrCreateDoc(COLLECTIONS.KNOWLEDGE_BASE, id, newKb);
+      setNewKb({ content: "", category: "General" });
+      await loadCmsData();
+      triggerStatus("success", "Knowledge base fact loaded successfully.");
+    } catch (err) {
+      triggerStatus("error", "Failed to add knowledge base fact.");
     }
   };
 
@@ -446,8 +461,12 @@ export default function AdminDashboard({
       <div className="space-y-6">
         {/* TAB 1: Global site configuration metadata */}
         {activeTab === "settings" && (
-          <div className="space-y-4">
-            <h3 className="text-sm font-mono font-bold text-gray-700 dark:text-zinc-300">GLOBAL APP COMPILER SETTINGS</h3>
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-sm font-mono font-bold text-gray-700 dark:text-zinc-300">GLOBAL APP COMPILER SETTINGS</h3>
+              <p className="text-xs text-gray-500 font-mono mt-1">Configure foundational parameters and telemetry settings.</p>
+            </div>
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-mono text-gray-500 mb-1">BRAND NAME</label>
@@ -475,6 +494,112 @@ export default function AdminDashboard({
                   onChange={(e) => setSiteSettings({ ...siteSettings, footerText: e.target.value })}
                   className="w-full bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm dark:text-white"
                 />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-mono text-gray-500 mb-1">TECHNICAL TICKER WORDS (Comma Separated)</label>
+                <textarea
+                  rows={2}
+                  value={siteSettings.tickerText || ""}
+                  onChange={(e) => setSiteSettings({ ...siteSettings, tickerText: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm dark:text-white font-mono"
+                  placeholder="ARTIFICIAL GENERAL INTELLIGENCE, NEURO-SYMBOLIC REASONING, ..."
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-mono text-gray-500 mb-1">FACTUAL ACCURACY METRIC</label>
+                <input
+                  type="text"
+                  value={siteSettings.factualAccuracy || ""}
+                  onChange={(e) => setSiteSettings({ ...siteSettings, factualAccuracy: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm dark:text-white font-mono"
+                  placeholder="99.8%"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-mono text-gray-500 mb-1">STORAGE ONLINE STATUS</label>
+                <input
+                  type="text"
+                  value={siteSettings.storageStatus || ""}
+                  onChange={(e) => setSiteSettings({ ...siteSettings, storageStatus: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm dark:text-white font-mono"
+                  placeholder="ONLINE"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-mono text-gray-500 mb-1">SYSTEM STATE STATUS</label>
+                <input
+                  type="text"
+                  value={siteSettings.systemState || ""}
+                  onChange={(e) => setSiteSettings({ ...siteSettings, systemState: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm dark:text-white font-mono"
+                  placeholder="SAFE_COEXISTENCE"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-mono text-gray-500 mb-1">PORT ENTRY NUMBER</label>
+                <input
+                  type="text"
+                  value={siteSettings.portEntry || ""}
+                  onChange={(e) => setSiteSettings({ ...siteSettings, portEntry: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm dark:text-white font-mono"
+                  placeholder="3000"
+                />
+              </div>
+            </div>
+
+            <div className="border-t border-zinc-100 dark:border-zinc-800 pt-4 space-y-4">
+              <h4 className="text-xs font-mono font-bold text-gray-700 dark:text-zinc-300">SOCIAL TELEMETRY NETWORKS</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-mono text-gray-500 mb-1">LINKEDIN URL</label>
+                  <input
+                    type="text"
+                    value={siteSettings.linkedinUrl || ""}
+                    onChange={(e) => setSiteSettings({ ...siteSettings, linkedinUrl: e.target.value })}
+                    className="w-full bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm dark:text-white"
+                    placeholder="https://linkedin.com/in/..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-gray-500 mb-1">GITHUB URL</label>
+                  <input
+                    type="text"
+                    value={siteSettings.githubUrl || ""}
+                    onChange={(e) => setSiteSettings({ ...siteSettings, githubUrl: e.target.value })}
+                    className="w-full bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm dark:text-white"
+                    placeholder="https://github.com/..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-gray-500 mb-1">FACEBOOK URL</label>
+                  <input
+                    type="text"
+                    value={siteSettings.facebookUrl || ""}
+                    onChange={(e) => setSiteSettings({ ...siteSettings, facebookUrl: e.target.value })}
+                    className="w-full bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm dark:text-white"
+                    placeholder="https://facebook.com/..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-gray-500 mb-1">INSTAGRAM URL</label>
+                  <input
+                    type="text"
+                    value={siteSettings.instagramUrl || ""}
+                    onChange={(e) => setSiteSettings({ ...siteSettings, instagramUrl: e.target.value })}
+                    className="w-full bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm dark:text-white"
+                    placeholder="https://instagram.com/..."
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-mono text-gray-500 mb-1">WHATSAPP LINK / NUMBER</label>
+                  <input
+                    type="text"
+                    value={siteSettings.whatsappUrl || ""}
+                    onChange={(e) => setSiteSettings({ ...siteSettings, whatsappUrl: e.target.value })}
+                    className="w-full bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm dark:text-white"
+                    placeholder="https://wa.me/..."
+                  />
+                </div>
               </div>
             </div>
             
@@ -1059,77 +1184,728 @@ export default function AdminDashboard({
         )}
 
         {activeTab === "links" && (
-          <div className="space-y-4">
-            <h3 className="text-sm font-mono font-bold text-gray-700 dark:text-zinc-300 uppercase">Manage Button Links</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {links.map((link) => (
-                <div key={link.id} className="p-4 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800 rounded-xl flex items-center justify-between">
-                  <div>
-                    <p className="font-mono text-sm font-bold">{link.name}</p>
-                    <p className="text-xs text-gray-500 font-mono">{link.url}</p>
-                    <div className="w-4 h-4 rounded-full mt-1" style={{ backgroundColor: link.color }} />
+          <div className="space-y-8">
+            {/* Core Buttons on the Live Site */}
+            <div className="bg-slate-50 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800 p-6 rounded-2xl space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-4">
+                <div>
+                  <h3 className="text-base font-mono font-bold text-gray-800 dark:text-zinc-200 uppercase">Core Live Site Buttons</h3>
+                  <p className="text-xs text-gray-500 dark:text-zinc-400 font-sans mt-0.5">Customize names, links, and background colors of the standard site buttons.</p>
+                </div>
+                <button
+                  onClick={async () => {
+                    setIsSaving(true);
+                    try {
+                      await updateOrCreateDoc(COLLECTIONS.SITE_SETTINGS, "default", siteSettings);
+                      onSettingsSaved();
+                      triggerStatus("success", "Core buttons configured successfully in Firestore.");
+                    } catch (err) {
+                      triggerStatus("error", "Failed to save core button configurations.");
+                    } finally {
+                      setIsSaving(false);
+                    }
+                  }}
+                  className="bg-pink-500 hover:bg-pink-600 text-white font-mono font-bold text-xs px-4 py-2.5 rounded-xl flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  SAVE BUTTONS CONFIG
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* 1. Hero Collab Button */}
+                <div className="bg-white dark:bg-zinc-950 p-4 rounded-xl border border-zinc-150/50 dark:border-zinc-850 space-y-3 shadow-xs">
+                  <div className="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                    <h4 className="text-xs font-mono font-bold text-pink-500 uppercase">Button 1: Hero Primary Action (Deploy Collab)</h4>
+                    <span className={`text-[9px] font-mono font-semibold px-2 py-0.5 rounded ${siteSettings.buttons?.collab?.enabled !== false ? "bg-green-50 text-green-600 dark:bg-green-950/20 dark:text-green-400" : "bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-400"}`}>
+                      {siteSettings.buttons?.collab?.enabled !== false ? "ACTIVE" : "HIDDEN / DELETED"}
+                    </span>
                   </div>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => {
-                        setEditingLinkId(link.id);
-                        setNewLink({ name: link.name, url: link.url, color: link.color });
-                      }}
-                      className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteItem(COLLECTIONS.BUTTON_LINKS, link.id)}
-                      className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg"
-                    >
-                      {pendingDeleteId === `${COLLECTIONS.BUTTON_LINKS}_${link.id}` ? "SURE?" : <Trash2 className="w-4 h-4" />}
-                    </button>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="block text-[10px] font-mono text-zinc-400 uppercase">Button Name / Label</label>
+                      <input
+                        type="text"
+                        value={siteSettings.buttons?.collab?.name || ""}
+                        onChange={(e) => {
+                          const updated = { ...siteSettings };
+                          if (!updated.buttons) updated.buttons = {};
+                          if (!updated.buttons.collab) updated.buttons.collab = {};
+                          updated.buttons.collab.name = e.target.value;
+                          setSiteSettings(updated);
+                        }}
+                        className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-xs rounded-lg dark:text-white focus:outline-none focus:border-pink-300"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-mono text-zinc-400 uppercase">Link Address (URL / Anchor)</label>
+                      <input
+                        type="text"
+                        value={siteSettings.buttons?.collab?.url || ""}
+                        onChange={(e) => {
+                          const updated = { ...siteSettings };
+                          if (!updated.buttons) updated.buttons = {};
+                          if (!updated.buttons.collab) updated.buttons.collab = {};
+                          updated.buttons.collab.url = e.target.value;
+                          setSiteSettings(updated);
+                        }}
+                        className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-xs rounded-lg dark:text-white focus:outline-none focus:border-pink-300"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-mono text-zinc-400 uppercase">Button Color (HEX)</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="color"
+                          value={siteSettings.buttons?.collab?.color || "#18181b"}
+                          onChange={(e) => {
+                            const updated = { ...siteSettings };
+                            if (!updated.buttons) updated.buttons = {};
+                            if (!updated.buttons.collab) updated.buttons.collab = {};
+                            updated.buttons.collab.color = e.target.value;
+                            setSiteSettings(updated);
+                          }}
+                          className="w-10 h-8 cursor-pointer rounded-lg bg-transparent border-0"
+                        />
+                        <input
+                          type="text"
+                          value={siteSettings.buttons?.collab?.color || ""}
+                          placeholder="e.g. #e11d48"
+                          onChange={(e) => {
+                            const updated = { ...siteSettings };
+                            if (!updated.buttons) updated.buttons = {};
+                            if (!updated.buttons.collab) updated.buttons.collab = {};
+                            updated.buttons.collab.color = e.target.value;
+                            setSiteSettings(updated);
+                          }}
+                          className="flex-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-xs rounded-lg dark:text-white focus:outline-none focus:border-pink-300"
+                        />
+                      </div>
+                    </div>
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = { ...siteSettings };
+                          if (!updated.buttons) updated.buttons = {};
+                          if (!updated.buttons.collab) updated.buttons.collab = {};
+                          updated.buttons.collab.enabled = updated.buttons.collab.enabled === false ? true : false;
+                          setSiteSettings(updated);
+                        }}
+                        className={`w-full text-[10px] font-mono font-bold px-3 py-2 rounded-lg cursor-pointer flex items-center justify-center gap-1.5 transition-all ${
+                          siteSettings.buttons?.collab?.enabled !== false 
+                            ? "bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 dark:text-red-400 dark:border-red-900/30" 
+                            : "bg-green-50 hover:bg-green-100 text-green-600 border border-green-100 dark:bg-green-950/20 dark:hover:bg-green-950/40 dark:text-green-400 dark:border-green-900/30"
+                        }`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        {siteSettings.buttons?.collab?.enabled !== false ? "DELETE / HIDE BUTTON" : "RESTORE / ACTIVATE BUTTON"}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              ))}
+
+                {/* 2. Hero Resume Button */}
+                <div className="bg-white dark:bg-zinc-950 p-4 rounded-xl border border-zinc-150/50 dark:border-zinc-850 space-y-3 shadow-xs">
+                  <div className="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                    <h4 className="text-xs font-mono font-bold text-pink-500 uppercase">Button 2: Hero Secondary Action (Download Resume)</h4>
+                    <span className={`text-[9px] font-mono font-semibold px-2 py-0.5 rounded ${siteSettings.buttons?.resume?.enabled !== false ? "bg-green-50 text-green-600 dark:bg-green-950/20 dark:text-green-400" : "bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-400"}`}>
+                      {siteSettings.buttons?.resume?.enabled !== false ? "ACTIVE" : "HIDDEN / DELETED"}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="block text-[10px] font-mono text-zinc-400 uppercase">Button Name / Label</label>
+                      <input
+                        type="text"
+                        value={siteSettings.buttons?.resume?.name || ""}
+                        onChange={(e) => {
+                          const updated = { ...siteSettings };
+                          if (!updated.buttons) updated.buttons = {};
+                          if (!updated.buttons.resume) updated.buttons.resume = {};
+                          updated.buttons.resume.name = e.target.value;
+                          setSiteSettings(updated);
+                        }}
+                        className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-xs rounded-lg dark:text-white focus:outline-none focus:border-pink-300"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-mono text-zinc-400 uppercase">Link Address (URL / Anchor)</label>
+                      <input
+                        type="text"
+                        value={siteSettings.buttons?.resume?.url || ""}
+                        onChange={(e) => {
+                          const updated = { ...siteSettings };
+                          if (!updated.buttons) updated.buttons = {};
+                          if (!updated.buttons.resume) updated.buttons.resume = {};
+                          updated.buttons.resume.url = e.target.value;
+                          setSiteSettings(updated);
+                        }}
+                        className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-xs rounded-lg dark:text-white focus:outline-none focus:border-pink-300"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-mono text-zinc-400 uppercase">Button Color (HEX)</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="color"
+                          value={siteSettings.buttons?.resume?.color || "#ffffff"}
+                          onChange={(e) => {
+                            const updated = { ...siteSettings };
+                            if (!updated.buttons) updated.buttons = {};
+                            if (!updated.buttons.resume) updated.buttons.resume = {};
+                            updated.buttons.resume.color = e.target.value;
+                            setSiteSettings(updated);
+                          }}
+                          className="w-10 h-8 cursor-pointer rounded-lg bg-transparent border-0"
+                        />
+                        <input
+                          type="text"
+                          value={siteSettings.buttons?.resume?.color || ""}
+                          placeholder="e.g. #ffffff"
+                          onChange={(e) => {
+                            const updated = { ...siteSettings };
+                            if (!updated.buttons) updated.buttons = {};
+                            if (!updated.buttons.resume) updated.buttons.resume = {};
+                            updated.buttons.resume.color = e.target.value;
+                            setSiteSettings(updated);
+                          }}
+                          className="flex-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-xs rounded-lg dark:text-white focus:outline-none focus:border-pink-300"
+                        />
+                      </div>
+                    </div>
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = { ...siteSettings };
+                          if (!updated.buttons) updated.buttons = {};
+                          if (!updated.buttons.resume) updated.buttons.resume = {};
+                          updated.buttons.resume.enabled = updated.buttons.resume.enabled === false ? true : false;
+                          setSiteSettings(updated);
+                        }}
+                        className={`w-full text-[10px] font-mono font-bold px-3 py-2 rounded-lg cursor-pointer flex items-center justify-center gap-1.5 transition-all ${
+                          siteSettings.buttons?.resume?.enabled !== false 
+                            ? "bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 dark:text-red-400 dark:border-red-900/30" 
+                            : "bg-green-50 hover:bg-green-100 text-green-600 border border-green-100 dark:bg-green-950/20 dark:hover:bg-green-950/40 dark:text-green-400 dark:border-green-900/30"
+                        }`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        {siteSettings.buttons?.resume?.enabled !== false ? "DELETE / HIDE BUTTON" : "RESTORE / ACTIVATE BUTTON"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Submit Contact Form Button */}
+                <div className="bg-white dark:bg-zinc-950 p-4 rounded-xl border border-zinc-150/50 dark:border-zinc-850 space-y-3 shadow-xs">
+                  <div className="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                    <h4 className="text-xs font-mono font-bold text-pink-500 uppercase">Button 3: Contact Form Submit</h4>
+                    <span className={`text-[9px] font-mono font-semibold px-2 py-0.5 rounded ${siteSettings.buttons?.inquiry?.enabled !== false ? "bg-green-50 text-green-600 dark:bg-green-950/20 dark:text-green-400" : "bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-400"}`}>
+                      {siteSettings.buttons?.inquiry?.enabled !== false ? "ACTIVE" : "HIDDEN / DELETED"}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="block text-[10px] font-mono text-zinc-400 uppercase">Button Name / Label</label>
+                      <input
+                        type="text"
+                        value={siteSettings.buttons?.inquiry?.name || ""}
+                        onChange={(e) => {
+                          const updated = { ...siteSettings };
+                          if (!updated.buttons) updated.buttons = {};
+                          if (!updated.buttons.inquiry) updated.buttons.inquiry = {};
+                          updated.buttons.inquiry.name = e.target.value;
+                          setSiteSettings(updated);
+                        }}
+                        className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-xs rounded-lg dark:text-white focus:outline-none focus:border-pink-300"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-mono text-zinc-400 uppercase">Link Address (URL)</label>
+                      <input
+                        type="text"
+                        disabled
+                        value="Not applicable (Form Submit action)"
+                        className="w-full bg-zinc-100 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-xs rounded-lg text-zinc-400 dark:text-zinc-500 font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-mono text-zinc-400 uppercase">Button Color (HEX)</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="color"
+                          value={siteSettings.buttons?.inquiry?.color || "#18181b"}
+                          onChange={(e) => {
+                            const updated = { ...siteSettings };
+                            if (!updated.buttons) updated.buttons = {};
+                            if (!updated.buttons.inquiry) updated.buttons.inquiry = {};
+                            updated.buttons.inquiry.color = e.target.value;
+                            setSiteSettings(updated);
+                          }}
+                          className="w-10 h-8 cursor-pointer rounded-lg bg-transparent border-0"
+                        />
+                        <input
+                          type="text"
+                          value={siteSettings.buttons?.inquiry?.color || ""}
+                          placeholder="e.g. #e11d48"
+                          onChange={(e) => {
+                            const updated = { ...siteSettings };
+                            if (!updated.buttons) updated.buttons = {};
+                            if (!updated.buttons.inquiry) updated.buttons.inquiry = {};
+                            updated.buttons.inquiry.color = e.target.value;
+                            setSiteSettings(updated);
+                          }}
+                          className="flex-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-xs rounded-lg dark:text-white focus:outline-none focus:border-pink-300"
+                        />
+                      </div>
+                    </div>
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = { ...siteSettings };
+                          if (!updated.buttons) updated.buttons = {};
+                          if (!updated.buttons.inquiry) updated.buttons.inquiry = {};
+                          updated.buttons.inquiry.enabled = updated.buttons.inquiry.enabled === false ? true : false;
+                          setSiteSettings(updated);
+                        }}
+                        className={`w-full text-[10px] font-mono font-bold px-3 py-2 rounded-lg cursor-pointer flex items-center justify-center gap-1.5 transition-all ${
+                          siteSettings.buttons?.inquiry?.enabled !== false 
+                            ? "bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 dark:text-red-400 dark:border-red-900/30" 
+                            : "bg-green-50 hover:bg-green-100 text-green-600 border border-green-100 dark:bg-green-950/20 dark:hover:bg-green-950/40 dark:text-green-400 dark:border-green-900/30"
+                        }`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        {siteSettings.buttons?.inquiry?.enabled !== false ? "DELETE / HIDE BUTTON" : "RESTORE / ACTIVATE BUTTON"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Cite Abstract Button */}
+                <div className="bg-white dark:bg-zinc-950 p-4 rounded-xl border border-zinc-150/50 dark:border-zinc-850 space-y-3 shadow-xs">
+                  <div className="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                    <h4 className="text-xs font-mono font-bold text-pink-500 uppercase">Button 4: Cite Abstract</h4>
+                    <span className={`text-[9px] font-mono font-semibold px-2 py-0.5 rounded ${siteSettings.buttons?.citeAbs?.enabled !== false ? "bg-green-50 text-green-600 dark:bg-green-950/20 dark:text-green-400" : "bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-400"}`}>
+                      {siteSettings.buttons?.citeAbs?.enabled !== false ? "ACTIVE" : "HIDDEN / DELETED"}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="block text-[10px] font-mono text-zinc-400 uppercase">Button Name / Label</label>
+                      <input
+                        type="text"
+                        value={siteSettings.buttons?.citeAbs?.name || ""}
+                        onChange={(e) => {
+                          const updated = { ...siteSettings };
+                          if (!updated.buttons) updated.buttons = {};
+                          if (!updated.buttons.citeAbs) updated.buttons.citeAbs = {};
+                          updated.buttons.citeAbs.name = e.target.value;
+                          setSiteSettings(updated);
+                        }}
+                        className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-xs rounded-lg dark:text-white focus:outline-none focus:border-pink-300"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-mono text-zinc-400 uppercase">Link Address (URL)</label>
+                      <input
+                        type="text"
+                        disabled
+                        value="Not applicable (Dynamic per paper)"
+                        className="w-full bg-zinc-100 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-xs rounded-lg text-zinc-400 dark:text-zinc-500 font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-mono text-zinc-400 uppercase">Button Color (HEX)</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="color"
+                          value={siteSettings.buttons?.citeAbs?.color || "#ffffff"}
+                          onChange={(e) => {
+                            const updated = { ...siteSettings };
+                            if (!updated.buttons) updated.buttons = {};
+                            if (!updated.buttons.citeAbs) updated.buttons.citeAbs = {};
+                            updated.buttons.citeAbs.color = e.target.value;
+                            setSiteSettings(updated);
+                          }}
+                          className="w-10 h-8 cursor-pointer rounded-lg bg-transparent border-0"
+                        />
+                        <input
+                          type="text"
+                          value={siteSettings.buttons?.citeAbs?.color || ""}
+                          placeholder="e.g. #f472b6"
+                          onChange={(e) => {
+                            const updated = { ...siteSettings };
+                            if (!updated.buttons) updated.buttons = {};
+                            if (!updated.buttons.citeAbs) updated.buttons.citeAbs = {};
+                            updated.buttons.citeAbs.color = e.target.value;
+                            setSiteSettings(updated);
+                          }}
+                          className="flex-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-xs rounded-lg dark:text-white focus:outline-none focus:border-pink-300"
+                        />
+                      </div>
+                    </div>
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = { ...siteSettings };
+                          if (!updated.buttons) updated.buttons = {};
+                          if (!updated.buttons.citeAbs) updated.buttons.citeAbs = {};
+                          updated.buttons.citeAbs.enabled = updated.buttons.citeAbs.enabled === false ? true : false;
+                          setSiteSettings(updated);
+                        }}
+                        className={`w-full text-[10px] font-mono font-bold px-3 py-2 rounded-lg cursor-pointer flex items-center justify-center gap-1.5 transition-all ${
+                          siteSettings.buttons?.citeAbs?.enabled !== false 
+                            ? "bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 dark:text-red-400 dark:border-red-900/30" 
+                            : "bg-green-50 hover:bg-green-100 text-green-600 border border-green-100 dark:bg-green-950/20 dark:hover:bg-green-950/40 dark:text-green-400 dark:border-green-900/30"
+                        }`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        {siteSettings.buttons?.citeAbs?.enabled !== false ? "DELETE / HIDE BUTTON" : "RESTORE / ACTIVATE BUTTON"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5. Read Research Button */}
+                <div className="bg-white dark:bg-zinc-950 p-4 rounded-xl border border-zinc-150/50 dark:border-zinc-850 space-y-3 shadow-xs">
+                  <div className="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                    <h4 className="text-xs font-mono font-bold text-pink-500 uppercase">Button 5: Blog Article Read</h4>
+                    <span className={`text-[9px] font-mono font-semibold px-2 py-0.5 rounded ${siteSettings.buttons?.readResearch?.enabled !== false ? "bg-green-50 text-green-600 dark:bg-green-950/20 dark:text-green-400" : "bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-400"}`}>
+                      {siteSettings.buttons?.readResearch?.enabled !== false ? "ACTIVE" : "HIDDEN / DELETED"}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="block text-[10px] font-mono text-zinc-400 uppercase">Button Name / Label</label>
+                      <input
+                        type="text"
+                        value={siteSettings.buttons?.readResearch?.name || ""}
+                        onChange={(e) => {
+                          const updated = { ...siteSettings };
+                          if (!updated.buttons) updated.buttons = {};
+                          if (!updated.buttons.readResearch) updated.buttons.readResearch = {};
+                          updated.buttons.readResearch.name = e.target.value;
+                          setSiteSettings(updated);
+                        }}
+                        className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-xs rounded-lg dark:text-white focus:outline-none focus:border-pink-300"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-mono text-zinc-400 uppercase">Link Address (URL)</label>
+                      <input
+                        type="text"
+                        disabled
+                        value="Not applicable (Opens research modal)"
+                        className="w-full bg-zinc-100 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-xs rounded-lg text-zinc-400 dark:text-zinc-500 font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-mono text-zinc-400 uppercase">Button Color / Accent Text Highlight (HEX)</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="color"
+                          value={siteSettings.buttons?.readResearch?.color || "#e11d48"}
+                          onChange={(e) => {
+                            const updated = { ...siteSettings };
+                            if (!updated.buttons) updated.buttons = {};
+                            if (!updated.buttons.readResearch) updated.buttons.readResearch = {};
+                            updated.buttons.readResearch.color = e.target.value;
+                            setSiteSettings(updated);
+                          }}
+                          className="w-10 h-8 cursor-pointer rounded-lg bg-transparent border-0"
+                        />
+                        <input
+                          type="text"
+                          value={siteSettings.buttons?.readResearch?.color || ""}
+                          placeholder="e.g. #f472b6"
+                          onChange={(e) => {
+                            const updated = { ...siteSettings };
+                            if (!updated.buttons) updated.buttons = {};
+                            if (!updated.buttons.readResearch) updated.buttons.readResearch = {};
+                            updated.buttons.readResearch.color = e.target.value;
+                            setSiteSettings(updated);
+                          }}
+                          className="flex-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-xs rounded-lg dark:text-white focus:outline-none focus:border-pink-300"
+                        />
+                      </div>
+                    </div>
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = { ...siteSettings };
+                          if (!updated.buttons) updated.buttons = {};
+                          if (!updated.buttons.readResearch) updated.buttons.readResearch = {};
+                          updated.buttons.readResearch.enabled = updated.buttons.readResearch.enabled === false ? true : false;
+                          setSiteSettings(updated);
+                        }}
+                        className={`w-full text-[10px] font-mono font-bold px-3 py-2 rounded-lg cursor-pointer flex items-center justify-center gap-1.5 transition-all ${
+                          siteSettings.buttons?.readResearch?.enabled !== false 
+                            ? "bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 dark:text-red-400 dark:border-red-900/30" 
+                            : "bg-green-50 hover:bg-green-100 text-green-600 border border-green-100 dark:bg-green-950/20 dark:hover:bg-green-950/40 dark:text-green-400 dark:border-green-900/30"
+                        }`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        {siteSettings.buttons?.readResearch?.enabled !== false ? "DELETE / HIDE BUTTON" : "RESTORE / ACTIVATE BUTTON"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 6 & 7. Portal and Dismiss Action Buttons */}
+                <div className="bg-white dark:bg-zinc-950 p-4 rounded-xl border border-zinc-150/50 dark:border-zinc-850 space-y-3 md:col-span-2 shadow-xs">
+                  <div className="flex flex-wrap justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-2 gap-2">
+                    <h4 className="text-xs font-mono font-bold text-pink-500 uppercase">Buttons 6 & 7: Portal Action Buttons</h4>
+                    <div className="flex gap-2">
+                      <span className={`text-[9px] font-mono font-semibold px-2 py-0.5 rounded ${siteSettings.buttons?.resetPortal?.enabled !== false ? "bg-green-50 text-green-600 dark:bg-green-950/20 dark:text-green-400" : "bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-400"}`}>
+                        RESET: {siteSettings.buttons?.resetPortal?.enabled !== false ? "ACTIVE" : "HIDDEN"}
+                      </span>
+                      <span className={`text-[9px] font-mono font-semibold px-2 py-0.5 rounded ${siteSettings.buttons?.dismissArticle?.enabled !== false ? "bg-green-50 text-green-600 dark:bg-green-950/20 dark:text-green-400" : "bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-400"}`}>
+                        DISMISS: {siteSettings.buttons?.dismissArticle?.enabled !== false ? "ACTIVE" : "HIDDEN"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <div>
+                        <label className="block text-[10px] font-mono text-zinc-400 uppercase">Reset Portal Button Name</label>
+                        <input
+                          type="text"
+                          value={siteSettings.buttons?.resetPortal?.name || ""}
+                          onChange={(e) => {
+                            const updated = { ...siteSettings };
+                            if (!updated.buttons) updated.buttons = {};
+                            if (!updated.buttons.resetPortal) updated.buttons.resetPortal = {};
+                            updated.buttons.resetPortal.name = e.target.value;
+                            setSiteSettings(updated);
+                          }}
+                          className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-xs rounded-lg dark:text-white focus:outline-none focus:border-pink-300"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-mono text-zinc-400 uppercase">Reset Portal Button Color (HEX)</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="color"
+                            value={siteSettings.buttons?.resetPortal?.color || "#ffffff"}
+                            onChange={(e) => {
+                              const updated = { ...siteSettings };
+                              if (!updated.buttons) updated.buttons = {};
+                              if (!updated.buttons.resetPortal) updated.buttons.resetPortal = {};
+                              updated.buttons.resetPortal.color = e.target.value;
+                              setSiteSettings(updated);
+                            }}
+                            className="w-10 h-8 cursor-pointer rounded-lg bg-transparent border-0"
+                          />
+                          <input
+                            type="text"
+                            value={siteSettings.buttons?.resetPortal?.color || ""}
+                            placeholder="e.g. #e11d48"
+                            onChange={(e) => {
+                              const updated = { ...siteSettings };
+                              if (!updated.buttons) updated.buttons = {};
+                              if (!updated.buttons.resetPortal) updated.buttons.resetPortal = {};
+                              updated.buttons.resetPortal.color = e.target.value;
+                              setSiteSettings(updated);
+                            }}
+                            className="flex-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-xs rounded-lg dark:text-white focus:outline-none focus:border-pink-300"
+                          />
+                        </div>
+                      </div>
+                      <div className="pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = { ...siteSettings };
+                            if (!updated.buttons) updated.buttons = {};
+                            if (!updated.buttons.resetPortal) updated.buttons.resetPortal = {};
+                            updated.buttons.resetPortal.enabled = updated.buttons.resetPortal.enabled === false ? true : false;
+                            setSiteSettings(updated);
+                          }}
+                          className={`w-full text-[10px] font-mono font-bold px-3 py-2 rounded-lg cursor-pointer flex items-center justify-center gap-1.5 transition-all ${
+                            siteSettings.buttons?.resetPortal?.enabled !== false 
+                              ? "bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 dark:text-red-400 dark:border-red-900/30" 
+                              : "bg-green-50 hover:bg-green-100 text-green-600 border border-green-100 dark:bg-green-950/20 dark:hover:bg-green-950/40 dark:text-green-400 dark:border-green-900/30"
+                          }`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          {siteSettings.buttons?.resetPortal?.enabled !== false ? "DELETE / HIDE BUTTON" : "RESTORE / ACTIVATE BUTTON"}
+                        </button>
+                      </div>
+                    </div>
+ 
+                    <div className="space-y-2">
+                      <div>
+                        <label className="block text-[10px] font-mono text-zinc-400 uppercase">Dismiss Article Button Name</label>
+                        <input
+                          type="text"
+                          value={siteSettings.buttons?.dismissArticle?.name || ""}
+                          onChange={(e) => {
+                            const updated = { ...siteSettings };
+                            if (!updated.buttons) updated.buttons = {};
+                            if (!updated.buttons.dismissArticle) updated.buttons.dismissArticle = {};
+                            updated.buttons.dismissArticle.name = e.target.value;
+                            setSiteSettings(updated);
+                          }}
+                          className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-xs rounded-lg dark:text-white focus:outline-none focus:border-pink-300"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-mono text-zinc-400 uppercase">Dismiss Article Button Color (HEX)</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="color"
+                            value={siteSettings.buttons?.dismissArticle?.color || "#ffffff"}
+                            onChange={(e) => {
+                              const updated = { ...siteSettings };
+                              if (!updated.buttons) updated.buttons = {};
+                              if (!updated.buttons.dismissArticle) updated.buttons.dismissArticle = {};
+                              updated.buttons.dismissArticle.color = e.target.value;
+                              setSiteSettings(updated);
+                            }}
+                            className="w-10 h-8 cursor-pointer rounded-lg bg-transparent border-0"
+                          />
+                          <input
+                            type="text"
+                            value={siteSettings.buttons?.dismissArticle?.color || ""}
+                            placeholder="e.g. #18181b"
+                            onChange={(e) => {
+                              const updated = { ...siteSettings };
+                              if (!updated.buttons) updated.buttons = {};
+                              if (!updated.buttons.dismissArticle) updated.buttons.dismissArticle = {};
+                              updated.buttons.dismissArticle.color = e.target.value;
+                              setSiteSettings(updated);
+                            }}
+                            className="flex-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-xs rounded-lg dark:text-white focus:outline-none focus:border-pink-300"
+                          />
+                        </div>
+                      </div>
+                      <div className="pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = { ...siteSettings };
+                            if (!updated.buttons) updated.buttons = {};
+                            if (!updated.buttons.dismissArticle) updated.buttons.dismissArticle = {};
+                            updated.buttons.dismissArticle.enabled = updated.buttons.dismissArticle.enabled === false ? true : false;
+                            setSiteSettings(updated);
+                          }}
+                          className={`w-full text-[10px] font-mono font-bold px-3 py-2 rounded-lg cursor-pointer flex items-center justify-center gap-1.5 transition-all ${
+                            siteSettings.buttons?.dismissArticle?.enabled !== false 
+                              ? "bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 dark:text-red-400 dark:border-red-900/30" 
+                              : "bg-green-50 hover:bg-green-100 text-green-600 border border-green-100 dark:bg-green-950/20 dark:hover:bg-green-950/40 dark:text-green-400 dark:border-green-900/30"
+                          }`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          {siteSettings.buttons?.dismissArticle?.enabled !== false ? "DELETE / HIDE BUTTON" : "RESTORE / ACTIVATE BUTTON"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="bg-brand-cream/20 border border-pink-100/30 p-4 rounded-xl space-y-3">
-              <p className="text-xs font-mono font-bold text-brand-accent-pink uppercase">{editingLinkId ? "EDITING LINK" : "ADD NEW LINK"}</p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <input
-                  type="text"
-                  placeholder="Button Name"
-                  value={newLink.name}
-                  onChange={(e) => setNewLink({ ...newLink, name: e.target.value })}
-                  className="bg-white dark:bg-zinc-900 border border-zinc-200/50 px-3 py-2 text-sm rounded-lg"
-                />
-                <input
-                  type="text"
-                  placeholder="URL Source"
-                  value={newLink.url}
-                  onChange={(e) => setNewLink({ ...newLink, url: e.target.value })}
-                  className="bg-white dark:bg-zinc-900 border border-zinc-200/50 px-3 py-2 text-sm rounded-lg"
-                />
-                <input
-                  type="color"
-                  value={newLink.color}
-                  onChange={(e) => setNewLink({ ...newLink, color: e.target.value })}
-                  className="h-9 w-full cursor-pointer"
-                />
+            {/* Custom Dynamic Button Links */}
+            <div className="border-t border-zinc-200 dark:border-zinc-800 pt-8 space-y-4">
+              <div>
+                <h3 className="text-base font-mono font-bold text-gray-800 dark:text-zinc-200 uppercase">Custom Action Button Links</h3>
+                <p className="text-xs text-gray-500 dark:text-zinc-400 font-sans mt-0.5">Add or edit completely customized action buttons that appear under the main Hero section of the live site.</p>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleSaveLink}
-                  className="bg-slate-900 dark:bg-white text-white dark:text-gray-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  {editingLinkId ? "UPDATE LINK" : "ADD BUTTON LINK"}
-                </button>
-                {editingLinkId && (
+
+              {links.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {links.map((link) => (
+                    <div key={link.id} className="p-4 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800 rounded-xl flex items-center justify-between shadow-xs">
+                      <div>
+                        <p className="font-mono text-sm font-bold">{link.name}</p>
+                        <p className="text-xs text-gray-500 font-mono">{link.url}</p>
+                        <div className="w-4 h-4 rounded-full mt-1 border border-zinc-200 dark:border-zinc-700" style={{ backgroundColor: link.color }} />
+                      </div>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => {
+                            setEditingLinkId(link.id);
+                            setNewLink({ name: link.name, url: link.url, color: link.color });
+                          }}
+                          className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteItem(COLLECTIONS.BUTTON_LINKS, link.id)}
+                          className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg"
+                        >
+                          {pendingDeleteId === `${COLLECTIONS.BUTTON_LINKS}_${link.id}` ? "SURE?" : <Trash2 className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="bg-brand-cream/20 border border-pink-100/30 p-5 rounded-2xl space-y-3">
+                <p className="text-xs font-mono font-bold text-brand-accent-pink uppercase">{editingLinkId ? "EDITING CUSTOM LINK" : "ADD NEW CUSTOM LINK"}</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-mono text-zinc-400 uppercase mb-1">Button Label Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Visit Lab Site"
+                      value={newLink.name}
+                      onChange={(e) => setNewLink({ ...newLink, name: e.target.value })}
+                      className="w-full bg-white dark:bg-zinc-900 border border-zinc-200/50 px-3 py-2 text-xs rounded-lg dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-mono text-zinc-400 uppercase mb-1">Button URL Address</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. https://lab.ai"
+                      value={newLink.url}
+                      onChange={(e) => setNewLink({ ...newLink, url: e.target.value })}
+                      className="w-full bg-white dark:bg-zinc-900 border border-zinc-200/50 px-3 py-2 text-xs rounded-lg dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-mono text-zinc-400 uppercase mb-1">Button Color (HEX)</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="color"
+                        value={newLink.color}
+                        onChange={(e) => setNewLink({ ...newLink, color: e.target.value })}
+                        className="h-9 w-10 cursor-pointer rounded-lg bg-transparent border-0"
+                      />
+                      <input
+                        type="text"
+                        placeholder="#e11d48"
+                        value={newLink.color}
+                        onChange={(e) => setNewLink({ ...newLink, color: e.target.value })}
+                        className="flex-1 bg-white dark:bg-zinc-900 border border-zinc-200/50 px-3 py-2 text-xs rounded-lg dark:text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-1">
                   <button
-                    onClick={() => { setEditingLinkId(null); setNewLink({ name: "", url: "", color: "#e11d48" }); }}
-                    className="bg-gray-200 dark:bg-zinc-800 text-gray-800 dark:text-gray-300 font-bold px-4 py-2 rounded-xl text-xs cursor-pointer"
+                    onClick={handleSaveLink}
+                    className="bg-slate-900 dark:bg-white text-white dark:text-gray-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 cursor-pointer hover:bg-slate-800 transition-colors"
                   >
-                    CANCEL
+                    <Plus className="w-3.5 h-3.5" />
+                    {editingLinkId ? "UPDATE LINK" : "ADD BUTTON LINK"}
                   </button>
-                )}
+                  {editingLinkId && (
+                    <button
+                      onClick={() => { setEditingLinkId(null); setNewLink({ name: "", url: "", color: "#e11d48" }); }}
+                      className="bg-gray-200 dark:bg-zinc-800 text-gray-800 dark:text-gray-300 font-bold px-4 py-2 rounded-xl text-xs cursor-pointer"
+                    >
+                      CANCEL
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
