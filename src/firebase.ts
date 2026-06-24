@@ -47,7 +47,8 @@ export const COLLECTIONS = {
   BLOG_POSTS: "blogPosts",
   CONTACT_MESSAGES: "contactMessages",
   KNOWLEDGE_BASE: "knowledgeBase",
-  BUTTON_LINKS: "buttonLinks"
+  BUTTON_LINKS: "buttonLinks",
+  ANIMATIONS: "animations"
 };
 
 // Seeding Data
@@ -60,6 +61,8 @@ export const SEED_DATA = {
     themePalette: "Pastel Pink Accent Theme",
     primaryColor: "#ffffff",
     accentColor: "#fbcfe8",
+    backgroundVideoUrl: "https://assets.mixkit.co/videos/preview/mixkit-forest-covered-in-snow-with-falling-flakes-38556-large.mp4",
+    enableBackgroundVideo: true,
     buttons: {
       collab: { name: "DEPLOY COGNITIVE COLLAB", url: "#contact", color: "" },
       resume: { name: "DOWNLOAD_RESUME", url: "#", color: "" },
@@ -234,6 +237,48 @@ export const SEED_DATA = {
       content: "UPASYO received the Dynamic Scholar in AI Foundations (2025) and is ranked among the Top 100 Visionary Core Researchers by IEEE.",
       category: "Achievements"
     }
+  ],
+  animations: [
+    {
+      id: "anim-hero",
+      type: "aos",
+      name: "Hero Section Fade",
+      selector: "hero-section",
+      effect: "fade-up",
+      duration: 1000,
+      delay: 0,
+      enabled: true
+    },
+    {
+      id: "anim-about",
+      type: "aos",
+      name: "About Bio Fade Left",
+      selector: "about-section",
+      effect: "fade-left",
+      duration: 1000,
+      delay: 100,
+      enabled: true
+    },
+    {
+      id: "anim-research",
+      type: "aos",
+      name: "Research Area Cards Zoom",
+      selector: "research-areas",
+      effect: "zoom-in",
+      duration: 800,
+      delay: 200,
+      enabled: true
+    },
+    {
+      id: "anim-projects",
+      type: "aos",
+      name: "Projects Container Slide",
+      selector: "projects",
+      effect: "fade-right",
+      duration: 900,
+      delay: 150,
+      enabled: true
+    }
   ]
 };
 
@@ -290,6 +335,11 @@ export async function seedDatabaseIfEmpty() {
     // 10. Knowledge Base
     for (const k of SEED_DATA.knowledgeBase) {
       await setDoc(doc(db, COLLECTIONS.KNOWLEDGE_BASE, k.id), k);
+    }
+
+    // 11. Animations
+    for (const anim of SEED_DATA.animations) {
+      await setDoc(doc(db, COLLECTIONS.ANIMATIONS, anim.id), anim);
     }
     
     console.log("Firebase database seeded successfully with world-class researcher profile!");

@@ -18,7 +18,8 @@ import {
   RefreshCw,
   Edit2,
   FileCode,
-  FileText
+  FileText,
+  Video
 } from "lucide-react";
 import { 
   db, 
@@ -36,8 +37,8 @@ interface AdminDashboardProps {
   isDarkMode: boolean;
   isAdmin?: boolean;
   setIsAdmin?: (isAdmin: boolean) => void;
-  activeTab?: "settings" | "hero" | "research" | "projects" | "pubs" | "achievements" | "blog" | "knowledge" | "messages" | "links";
-  setActiveTab?: (tab: "settings" | "hero" | "research" | "projects" | "pubs" | "achievements" | "blog" | "knowledge" | "messages" | "links") => void;
+  activeTab?: "settings" | "hero" | "research" | "projects" | "pubs" | "achievements" | "blog" | "knowledge" | "messages" | "links" | "animations";
+  setActiveTab?: (tab: "settings" | "hero" | "research" | "projects" | "pubs" | "achievements" | "blog" | "knowledge" | "messages" | "links" | "animations") => void;
 }
 
 export default function AdminDashboard({ 
@@ -55,7 +56,7 @@ export default function AdminDashboard({
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
   
-  const [localActiveTab, setLocalActiveTab] = useState<"settings" | "hero" | "research" | "projects" | "pubs" | "achievements" | "blog" | "knowledge" | "messages" | "links">("settings");
+  const [localActiveTab, setLocalActiveTab] = useState<"settings" | "hero" | "research" | "projects" | "pubs" | "achievements" | "blog" | "knowledge" | "messages" | "links" | "animations">("settings");
   const activeTab = passedActiveTab !== undefined ? passedActiveTab : localActiveTab;
   const setActiveTab = passedSetActiveTab !== undefined ? passedSetActiveTab : setLocalActiveTab;
   
@@ -88,6 +89,7 @@ export default function AdminDashboard({
   const [knowledgeBase, setKnowledgeBase] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
   const [links, setLinks] = useState<any[]>([]);
+  const [animations, setAnimations] = useState<any[]>([]);
 
   // Editing forms state holder (for adds/updates)
   const [newArea, setNewArea] = useState({ title: "", description: "", icon: "Cpu", order: 1 });
@@ -98,6 +100,20 @@ export default function AdminDashboard({
   const [newKb, setNewKb] = useState({ content: "", category: "General" });
   const [newLink, setNewLink] = useState({ name: "", url: "", color: "#e11d48" });
   const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
+  const [editingAnimationId, setEditingAnimationId] = useState<string | null>(null);
+  const [newAnimation, setNewAnimation] = useState({
+    name: "",
+    type: "aos",
+    selector: "hero-section",
+    effect: "fade-up",
+    url: "",
+    duration: 1000,
+    delay: 0,
+    enabled: true,
+    loop: true,
+    speed: "1",
+    style: "{\"width\":\"100%\",\"height\":\"240px\"}"
+  });
 
   const adminPasscode = "upasyo2026"; // Secure default pass
 
@@ -124,6 +140,7 @@ export default function AdminDashboard({
     const kb = await fetchCollection(COLLECTIONS.KNOWLEDGE_BASE);
     const links = await fetchCollection(COLLECTIONS.BUTTON_LINKS);
     const msgs = await fetchCollection(COLLECTIONS.CONTACT_MESSAGES, false);
+    const anims = await fetchCollection(COLLECTIONS.ANIMATIONS, false);
 
     setResearchAreas(rAreas && rAreas.length > 0 ? rAreas : SEED_DATA.researchAreas);
     setProjects(projs && projs.length > 0 ? projs : SEED_DATA.projects);
@@ -132,6 +149,7 @@ export default function AdminDashboard({
     setBlogPosts(blogs && blogs.length > 0 ? blogs : SEED_DATA.blogPosts);
     setKnowledgeBase(kb);
     setLinks(links || []);
+    setAnimations(anims && anims.length > 0 ? anims : SEED_DATA.animations);
     
     // Sort contact messages by timestamp descending
     if (msgs) {
@@ -299,6 +317,93 @@ export default function AdminDashboard({
     }
   };
 
+  // Animation CRUD Handlers
+  const handleAddAnimation = async () => {
+    if (!newAnimation.name) return;
+    try {
+      const itemId = "anim_" + Date.now();
+      await updateOrCreateDoc(COLLECTIONS.ANIMATIONS, itemId, newAnimation);
+      setNewAnimation({
+        name: "",
+        type: "aos",
+        selector: "hero-section",
+        effect: "fade-up",
+        url: "",
+        duration: 1000,
+        delay: 0,
+        enabled: true,
+        loop: true,
+        speed: "1",
+        style: "{\"width\":\"100%\",\"height\":\"240px\"}"
+      });
+      await loadCmsData();
+      onSettingsSaved();
+      triggerStatus("success", "Animation created and deployed.");
+    } catch (err) {
+      triggerStatus("error", "Failed to add animation.");
+    }
+  };
+
+  const handleEditAnimation = (anim: any) => {
+    setEditingAnimationId(anim.id);
+    setNewAnimation({
+      name: anim.name || "",
+      type: anim.type || "aos",
+      selector: anim.selector || "hero-section",
+      effect: anim.effect || "fade-up",
+      url: anim.url || "",
+      duration: anim.duration || 1000,
+      delay: anim.delay || 0,
+      enabled: anim.enabled !== false,
+      loop: anim.loop !== false,
+      speed: anim.speed || "1",
+      style: anim.style || "{\"width\":\"100%\",\"height\":\"240px\"}"
+    });
+  };
+
+  const handleUpdateAnimation = async () => {
+    if (!editingAnimationId) return;
+    try {
+      await updateOrCreateDoc(COLLECTIONS.ANIMATIONS, editingAnimationId, newAnimation);
+      setEditingAnimationId(null);
+      setNewAnimation({
+        name: "",
+        type: "aos",
+        selector: "hero-section",
+        effect: "fade-up",
+        url: "",
+        duration: 1000,
+        delay: 0,
+        enabled: true,
+        loop: true,
+        speed: "1",
+        style: "{\"width\":\"100%\",\"height\":\"240px\"}"
+      });
+      await loadCmsData();
+      onSettingsSaved();
+      triggerStatus("success", "Animation updated and synchronized.");
+    } catch (err) {
+      triggerStatus("error", "Failed to update animation settings.");
+    }
+  };
+
+  const handleCancelEditAnimation = () => {
+    setEditingAnimationId(null);
+    setNewAnimation({
+      name: "",
+      type: "aos",
+      selector: "hero-section",
+      effect: "fade-up",
+      url: "",
+      duration: 1000,
+      delay: 0,
+      enabled: true,
+      loop: true,
+      speed: "1",
+      style: "{\"width\":\"100%\",\"height\":\"240px\"}"
+    });
+  };
+
   // Delete Handlers
   const handleDeleteItem = async (col: string, id: string) => {
     const confirmationKey = `${col}_${id}`;
@@ -437,7 +542,8 @@ export default function AdminDashboard({
           { id: "blog", label: "RESEARCH_BLOG", icon: FileText },
           { id: "knowledge", label: "AI_RAG_FACTS", icon: Brain },
           { id: "messages", label: "FORM_MESSAGES", icon: MessageSquare },
-          { id: "links", label: "BUTTON_LINKS", icon: Edit2 }
+          { id: "links", label: "BUTTON_LINKS", icon: Edit2 },
+          { id: "animations", label: "ANIMATIONS", icon: RefreshCw }
         ].map((tab) => {
           const Icon = tab.icon;
           return (
@@ -544,6 +650,77 @@ export default function AdminDashboard({
                   className="w-full bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm dark:text-white font-mono"
                   placeholder="3000"
                 />
+              </div>
+            </div>
+
+            {/* BACKGROUND VIDEO SETTINGS */}
+            <div className="border-t border-zinc-150 dark:border-zinc-800 pt-6 space-y-4">
+              <div className="flex items-center gap-2">
+                <Video className="w-4 h-4 text-pink-500 animate-pulse" />
+                <h4 className="text-xs font-mono font-bold text-gray-700 dark:text-pink-300 uppercase">SWISS ALPS BACKGROUND VIDEO DEPLOYMENT</h4>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-zinc-400 font-sans">
+                Deploy and configure high-definition looping scenic background animations. Updates instantly re-compile the landing portal layer.
+              </p>
+              
+              <div className="bg-zinc-50 dark:bg-zinc-900/40 p-5 border border-zinc-200/50 dark:border-zinc-800 rounded-2xl space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-mono text-gray-500 dark:text-pink-300 font-semibold mb-1">BACKGROUND VIDEO DIRECT MP4 SOURCE URL</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., https://assets.mixkit.co/.../video.mp4"
+                      value={siteSettings.backgroundVideoUrl || ""}
+                      onChange={(e) => setSiteSettings({ ...siteSettings, backgroundVideoUrl: e.target.value })}
+                      className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs font-mono dark:text-white"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 select-none pt-2">
+                    <input
+                      type="checkbox"
+                      id="enable-bg-video-chk"
+                      checked={siteSettings.enableBackgroundVideo !== false}
+                      onChange={(e) => setSiteSettings({ ...siteSettings, enableBackgroundVideo: e.target.checked })}
+                      className="rounded accent-pink-500 cursor-pointer w-4 h-4"
+                    />
+                    <label htmlFor="enable-bg-video-chk" className="text-xs font-mono font-bold text-gray-700 dark:text-pink-300 cursor-pointer">
+                      Enable Backplane Video Stream
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSiteSettings({
+                        ...siteSettings,
+                        backgroundVideoUrl: "https://assets.mixkit.co/videos/preview/mixkit-forest-covered-in-snow-with-falling-flakes-38556-large.mp4",
+                        enableBackgroundVideo: true
+                      });
+                      triggerStatus("success", "Loaded Swiss Alps falling snow preset parameters. Click compile below to save!");
+                    }}
+                    className="bg-white hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 text-xs font-bold font-mono px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                  >
+                    Load Swiss Alps Snow Preset
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSiteSettings({
+                        ...siteSettings,
+                        backgroundVideoUrl: "",
+                        enableBackgroundVideo: false
+                      });
+                      triggerStatus("success", "Cleared background video and disabled playback. Click compile below to save!");
+                    }}
+                    className="bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 text-xs font-bold font-mono px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                  >
+                    Delete Background Video Configuration
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1947,6 +2124,172 @@ export default function AdminDashboard({
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* TAB 10: Dynamic Scroll Animations Controller */}
+        {activeTab === "animations" && (
+          <div className="space-y-8">
+            <div className="bg-pink-50 dark:bg-zinc-900/40 p-4 border border-pink-200/40 dark:border-zinc-800 rounded-xl">
+              <h4 className="text-xs font-bold font-mono text-pink-700 dark:text-brand-accent-pink flex items-center gap-1 uppercase mb-1">
+                <RefreshCw className="w-4 h-4 animate-spin" style={{ animationDuration: "12s" }} /> DYNAMIC SCROLL ANIMATIONS ARCHITECTURE
+              </h4>
+              <p className="text-xs text-gray-600 dark:text-zinc-400 leading-relaxed">
+                Configure Scroll-driven AOS (Framer Motion) entrance effects for your core site components. Changes write immediately to Firestore and synchronize layout attributes dynamically.
+              </p>
+            </div>
+
+            {animations.filter(a => a.type === "aos").length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-xs font-mono font-bold text-gray-700 dark:text-zinc-300 uppercase">Deployed Animation Registers</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {animations.filter(a => a.type === "aos").map((anim) => (
+                    <div key={anim.id} className="p-4 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800 rounded-xl flex items-start justify-between shadow-xs">
+                      <div className="space-y-2">
+                        <div>
+                          <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded mr-2 uppercase bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400">
+                            {anim.type}
+                          </span>
+                          <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded ${anim.enabled !== false ? "bg-green-100 dark:bg-green-950/40 text-green-600 dark:text-green-400" : "bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400"}`}>
+                            {anim.enabled !== false ? "ENABLED" : "DISABLED"}
+                          </span>
+                        </div>
+                        <p className="font-mono text-sm font-bold">{anim.name}</p>
+                        <p className="text-[10px] text-gray-500 font-mono">TARGET: <span className="text-zinc-800 dark:text-zinc-300 font-bold">{anim.selector}</span></p>
+                        
+                        <div className="text-[10px] font-mono text-gray-500 space-y-0.5">
+                          <p>EFFECT: <span className="text-zinc-700 dark:text-zinc-300 font-semibold">{anim.effect}</span></p>
+                          <p>DURATION: <span className="text-zinc-700 dark:text-zinc-300 font-semibold">{anim.duration}ms</span> | DELAY: <span className="text-zinc-700 dark:text-zinc-300 font-semibold">{anim.delay}ms</span></p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-1.5">
+                        <button 
+                          onClick={() => handleEditAnimation(anim)}
+                          className="p-1.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20 cursor-pointer"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteItem(COLLECTIONS.ANIMATIONS, anim.id)}
+                          className="p-1.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 cursor-pointer"
+                        >
+                          {pendingDeleteId === `${COLLECTIONS.ANIMATIONS}_${anim.id}` ? "SURE?" : <Trash2 className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="bg-brand-cream/15 border border-zinc-150/50 dark:border-zinc-900 p-6 rounded-2xl space-y-4">
+              <p className="text-xs font-mono font-bold text-brand-accent-pink uppercase">{editingAnimationId ? `EDITING REGISTER [${editingAnimationId}]` : "CREATE NEW ANIMATION REGISTER"}</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-mono text-zinc-400 dark:text-pink-300 font-semibold uppercase mb-1">Animation Name / Label</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Hero Section Fade Up"
+                    value={newAnimation.name}
+                    onChange={(e) => setNewAnimation({ ...newAnimation, name: e.target.value })}
+                    className="w-full bg-white dark:bg-zinc-900 border border-zinc-200/50 px-3 py-2 text-xs rounded-lg dark:text-white focus:outline-none focus:border-pink-300"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono text-zinc-400 dark:text-pink-300 font-semibold uppercase mb-1">Target Element / Selector Bind</label>
+                  <select
+                    value={newAnimation.selector}
+                    onChange={(e) => setNewAnimation({ ...newAnimation, selector: e.target.value })}
+                    className="w-full bg-white dark:bg-zinc-900 border border-zinc-200/50 px-3 py-2 text-xs rounded-lg dark:text-white focus:outline-none"
+                  >
+                    <option value="hero-section">Hero Cover Section (hero-section)</option>
+                    <option value="about-section">Biography Bio Column (about-section)</option>
+                    <option value="research-areas">Research Vision Grid (research-areas)</option>
+                    <option value="projects">Projects Portfolio Deck (projects)</option>
+                    <option value="publications">Publications Bibliography Shelf (publications)</option>
+                    <option value="achievements">Benchmarks Accolades Panel (achievements)</option>
+                    <option value="blog">Research Deep Dive Articles (blog)</option>
+                    <option value="contact">Collaborative Route Inbox Form (contact)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono text-zinc-400 dark:text-pink-300 font-semibold uppercase mb-1">AOS Motion Effect</label>
+                  <select
+                    value={newAnimation.effect}
+                    onChange={(e) => setNewAnimation({ ...newAnimation, effect: e.target.value })}
+                    className="w-full bg-white dark:bg-zinc-900 border border-zinc-200/50 px-3 py-2 text-xs rounded-lg dark:text-white focus:outline-none"
+                  >
+                    <option value="fade-up">Fade Up (fade-up)</option>
+                    <option value="fade-down">Fade Down (fade-down)</option>
+                    <option value="fade-left">Fade Left (fade-left)</option>
+                    <option value="fade-right">Fade Right (fade-right)</option>
+                    <option value="zoom-in">Zoom In (zoom-in)</option>
+                    <option value="zoom-out">Zoom Out (zoom-out)</option>
+                    <option value="flip-up">Flip Up (flip-up)</option>
+                    <option value="flip-down">Flip Down (flip-down)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono text-zinc-400 dark:text-pink-300 font-semibold uppercase mb-1">Duration (ms)</label>
+                  <input
+                    type="number"
+                    min="100"
+                    max="5000"
+                    value={newAnimation.duration}
+                    onChange={(e) => setNewAnimation({ ...newAnimation, duration: parseInt(e.target.value) || 1000 })}
+                    className="w-full bg-white dark:bg-zinc-900 border border-zinc-200/50 px-3 py-2 text-xs rounded-lg dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono text-zinc-400 dark:text-pink-300 font-semibold uppercase mb-1">Delay Offset (ms)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="3000"
+                    value={newAnimation.delay}
+                    onChange={(e) => setNewAnimation({ ...newAnimation, delay: parseInt(e.target.value) || 0 })}
+                    className="w-full bg-white dark:bg-zinc-900 border border-zinc-200/50 px-3 py-2 text-xs rounded-lg dark:text-white"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 pt-2 select-none md:col-span-2">
+                  <input
+                    type="checkbox"
+                    id="enable-chk"
+                    checked={newAnimation.enabled !== false}
+                    onChange={(e) => setNewAnimation({ ...newAnimation, enabled: e.target.checked })}
+                    className="rounded accent-pink-500 cursor-pointer"
+                  />
+                  <label htmlFor="enable-chk" className="text-xs font-mono font-bold text-gray-700 dark:text-zinc-300 cursor-pointer">
+                    Enable / Active Deploy State
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={editingAnimationId ? handleUpdateAnimation : handleAddAnimation}
+                  className="bg-slate-900 dark:bg-white text-white dark:text-gray-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 cursor-pointer hover:bg-slate-800 transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  {editingAnimationId ? "UPDATE DEPLOYMENT" : "DEPLOY ANIMATION"}
+                </button>
+                {editingAnimationId && (
+                  <button
+                    onClick={handleCancelEditAnimation}
+                    className="bg-gray-200 dark:bg-zinc-800 text-gray-800 dark:text-gray-300 font-bold px-4 py-2 rounded-xl text-xs cursor-pointer"
+                  >
+                    CANCEL
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>

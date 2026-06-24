@@ -151,6 +151,26 @@
         "category": { "type": "string" }
       },
       "required": ["content", "category"]
+    },
+    "Animation": {
+      "title": "Animation Settings",
+      "description": "On-scroll animations (AOS) and interactive LottieFiles widgets configured inside the site",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["aos", "lottie"] },
+        "name": { "type": "string" },
+        "selector": { "type": "string" },
+        "effect": { "type": "string" },
+        "url": { "type": "string" },
+        "duration": { "type": "number" },
+        "delay": { "type": "number" },
+        "enabled": { "type": "boolean" },
+        "loop": { "type": "boolean" },
+        "style": { "type": "string" },
+        "speed": { "type": "string" }
+      },
+      "required": ["type", "name", "selector"]
     }
   },
   "firestore": {
@@ -197,6 +217,10 @@
     "knowledgeBase": {
       "schema": "KnowledgeBase",
       "description": "Information storage for AI RAG systems"
+    },
+    "animations": {
+      "schema": "Animation",
+      "description": "Scroll effects and Lottie assets embedded in the front-end layout"
     }
   }
 }

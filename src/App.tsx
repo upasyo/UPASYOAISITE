@@ -98,6 +98,7 @@ export default function App() {
   const [publications, setPublications] = useState<any[]>([]);
   const [achievements, setAchievements] = useState<any[]>([]);
   const [blogPosts, setBlogPosts] = useState<any[]>([]);
+  const [animations, setAnimations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Active Blog filters & reader
@@ -252,6 +253,14 @@ export default function App() {
       }
       setBlogPosts(blogs && blogs.length > 0 ? blogs : SEED_DATA.blogPosts);
 
+      let anims = [];
+      try {
+        anims = await fetchCollection(COLLECTIONS.ANIMATIONS, false);
+      } catch (e) {
+        console.error("Error fetching animations:", e);
+      }
+      setAnimations(anims && anims.length > 0 ? anims : SEED_DATA.animations);
+
     } catch (err) {
       console.error("Error drawing Firestore items entirely:", err);
       // Fallback everything
@@ -264,6 +273,7 @@ export default function App() {
       setPublications(SEED_DATA.publications);
       setAchievements(SEED_DATA.achievements);
       setBlogPosts(SEED_DATA.blogPosts);
+      setAnimations(SEED_DATA.animations);
     } finally {
       setLoading(false);
     }
@@ -272,6 +282,60 @@ export default function App() {
   useEffect(() => {
     loadProfileParameters();
   }, []);
+
+  const getMotionProps = (selector: string, defaultEffect = "fade-up", defaultDuration = 700, defaultDelay = 0) => {
+    const config = animations.find(a => a.selector === selector && a.type === "aos");
+    
+    if (config && config.enabled === false) {
+      return {
+        initial: { opacity: 1, y: 0 },
+        whileInView: { opacity: 1, y: 0 },
+        viewport: { once: true, margin: "-120px" },
+        transition: { duration: 0 }
+      };
+    }
+
+    const effect = config ? config.effect : defaultEffect;
+    const duration = config ? (Number(config.duration) || defaultDuration) : defaultDuration;
+    const delay = config ? (Number(config.delay) || defaultDelay) : defaultDelay;
+
+    let initial: any = { opacity: 0, y: 35 };
+    let whileInView: any = { opacity: 1, y: 0 };
+
+    if (effect === "fade-up") {
+      initial = { opacity: 0, y: 35 };
+      whileInView = { opacity: 1, y: 0 };
+    } else if (effect === "fade-down") {
+      initial = { opacity: 0, y: -35 };
+      whileInView = { opacity: 1, y: 0 };
+    } else if (effect === "fade-left") {
+      initial = { opacity: 0, x: 35 };
+      whileInView = { opacity: 1, x: 0 };
+    } else if (effect === "fade-right") {
+      initial = { opacity: 0, x: -35 };
+      whileInView = { opacity: 1, x: 0 };
+    } else if (effect === "zoom-in") {
+      initial = { opacity: 0, scale: 0.85 };
+      whileInView = { opacity: 1, scale: 1 };
+    } else if (effect === "zoom-out") {
+      initial = { opacity: 0, scale: 1.15 };
+      whileInView = { opacity: 1, scale: 1 };
+    } else if (effect === "flip-up") {
+      initial = { opacity: 0, rotateX: 60 };
+      whileInView = { opacity: 1, rotateX: 0 };
+    } else if (effect === "flip-down") {
+      initial = { opacity: 0, rotateX: -60 };
+      whileInView = { opacity: 1, rotateX: 0 };
+    }
+
+    return {
+      initial,
+      whileInView,
+      viewport: { once: true, margin: "-120px" },
+      transition: { duration: duration / 1000, delay: delay / 1000, ease: [0.16, 1, 0.3, 1] as any }
+    };
+  };
+
 
   // 4. Handle forms submission
   const handleContactSubmit = async (e: React.FormEvent) => {
@@ -506,10 +570,7 @@ export default function App() {
             <motion.section
               className="relative flex flex-col-reverse lg:flex-row items-center gap-14 pt-4 md:pt-14"
               id="hero-gate"
-              initial={{ opacity: 0, y: 35 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-120px" }}
-              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+              {...getMotionProps("hero-section", "fade-up", 1000, 0)}
             >
               
               {/* Profile Bio details */}
@@ -588,25 +649,28 @@ export default function App() {
               </div>
 
               {/* Dynamic Rotating/Hover Photo display with unique accents */}
-              <div className="relative w-64 h-64 sm:w-80 sm:h-80 flex-shrink-0 flex items-center justify-center select-none">
-                {/* Metallic Silver and Pastel Pink concentric accent frames */}
-                <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-brand-silver via-zinc-200 dark:via-zinc-800 to-brand-pink animate-spin" style={{ animationDuration: '24s' }} />
-                <div className="absolute inset-2 bg-white rounded-full" />
-                <div className="absolute inset-3.5 rounded-full overflow-hidden border border-zinc-100 dark:border-zinc-800/80 shadow-2xl bg-white">
-                  <img
-                    referrerPolicy="no-referrer"
-                    src={(localizedHero.profileImage && !localizedHero.profileImage.includes("photo-1507003211169-0a1dd7228f2d") && localizedHero.profileImage !== "#") ? localizedHero.profileImage : swissAlpsImage}
-                    alt="UPASYO Profile Photograph"
-                    className="w-full h-full object-cover opacity-95 transition-all duration-300 hover:scale-105 active:scale-105"
-                  />
+              <div className="flex flex-col items-center gap-6 flex-shrink-0">
+                <div className="relative w-64 h-64 sm:w-80 sm:h-80 flex items-center justify-center select-none">
+                  {/* Metallic Silver and Pastel Pink concentric accent frames */}
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-brand-silver via-zinc-200 dark:via-zinc-800 to-brand-pink animate-spin" style={{ animationDuration: '24s' }} />
+                  <div className="absolute inset-2 bg-white rounded-full" />
+                  <div className="absolute inset-3.5 rounded-full overflow-hidden border border-zinc-100 dark:border-zinc-800/80 shadow-2xl bg-white">
+                    <img
+                      referrerPolicy="no-referrer"
+                      src={(localizedHero.profileImage && !localizedHero.profileImage.includes("photo-1507003211169-0a1dd7228f2d") && localizedHero.profileImage !== "#") ? localizedHero.profileImage : swissAlpsImage}
+                      alt="UPASYO Profile Photograph"
+                      className="w-full h-full object-cover opacity-95 transition-all duration-300 hover:scale-105 active:scale-105"
+                    />
+                  </div>
+                  {/* Micro-metrics overlays around the picture */}
+                  <div className="absolute top-2 right-2 bg-white/90 dark:bg-zinc-900/90 border border-zinc-200/50 dark:border-zinc-800/80 px-2.5 py-1 rounded-md text-[9px] font-mono text-zinc-650 dark:text-zinc-350 font-semibold select-none flex items-center gap-1 shadow-xs animate-pulse">
+                    <CheckCircle2 className="w-3 h-3 text-brand-accent-pink" /> {t(siteSettings.factualAccuracy ? `FACTUAL_ACCURACY: ${siteSettings.factualAccuracy}` : "FACTUAL_ACCURACY: 99.8%")}
+                  </div>
+                  <div className="absolute bottom-2 left-2 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md border border-zinc-200/50 dark:border-zinc-800/80 px-2.5 py-1 rounded-md text-[9px] font-mono text-zinc-650 dark:text-zinc-350 font-semibold select-none flex items-center gap-1 shadow-xs">
+                    <Database className="w-3 h-3 text-brand-accent-pink" /> {t(siteSettings.storageStatus ? `STORAGE: ${siteSettings.storageStatus}` : "STORAGE: ONLINE")}
+                  </div>
                 </div>
-                {/* Micro-metrics overlays around the picture */}
-                <div className="absolute top-2 right-2 bg-white/90 dark:bg-zinc-900/90 border border-zinc-200/50 dark:border-zinc-800/80 px-2.5 py-1 rounded-md text-[9px] font-mono text-zinc-650 dark:text-zinc-350 font-semibold select-none flex items-center gap-1 shadow-xs animate-pulse">
-                  <CheckCircle2 className="w-3 h-3 text-brand-accent-pink" /> {t(siteSettings.factualAccuracy ? `FACTUAL_ACCURACY: ${siteSettings.factualAccuracy}` : "FACTUAL_ACCURACY: 99.8%")}
-                </div>
-                <div className="absolute bottom-2 left-2 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md border border-zinc-200/50 dark:border-zinc-800/80 px-2.5 py-1 rounded-md text-[9px] font-mono text-zinc-650 dark:text-zinc-350 font-semibold select-none flex items-center gap-1 shadow-xs">
-                  <Database className="w-3 h-3 text-brand-accent-pink" /> {t(siteSettings.storageStatus ? `STORAGE: ${siteSettings.storageStatus}` : "STORAGE: ONLINE")}
-                </div>
+
               </div>
             </motion.section>
 
@@ -626,10 +690,7 @@ export default function App() {
             <motion.section
               className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start"
               id="about"
-              initial={{ opacity: 0, y: 35 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-120px" }}
-              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+              {...getMotionProps("about-section", "fade-left", 1000, 100)}
             >
               <div className="lg:col-span-4 font-mono select-none">
                 <span className="text-brand-accent-pink text-xs font-bold uppercase tracking-widest block mb-1">01 / {t("SYSTEM_BIO")}</span>
@@ -667,10 +728,7 @@ export default function App() {
             <motion.section
               className="space-y-12"
               id="research"
-              initial={{ opacity: 0, y: 35 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-120px" }}
-              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+              {...getMotionProps("research-areas", "zoom-in", 800, 200)}
             >
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start font-mono select-none">
                 <div className="lg:col-span-4">
@@ -726,10 +784,7 @@ export default function App() {
             <motion.section
               className="space-y-12"
               id="projects"
-              initial={{ opacity: 0, y: 35 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-120px" }}
-              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+              {...getMotionProps("projects", "fade-right", 900, 150)}
             >
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start font-mono select-none">
                 <div className="lg:col-span-4">
@@ -811,10 +866,7 @@ export default function App() {
             <motion.section
               className="space-y-12"
               id="publications"
-              initial={{ opacity: 0, y: 35 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-120px" }}
-              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+              {...getMotionProps("publications", "fade-up", 1000, 50)}
             >
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start font-mono select-none">
                 <div className="lg:col-span-4">
@@ -868,10 +920,7 @@ export default function App() {
             <motion.section
               className="space-y-12"
               id="achievements"
-              initial={{ opacity: 0, y: 35 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-120px" }}
-              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+              {...getMotionProps("achievements", "zoom-in", 900, 100)}
             >
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start font-mono select-none">
                 <div className="lg:col-span-4">
@@ -913,10 +962,7 @@ export default function App() {
             <motion.section
               className="space-y-12"
               id="blog"
-              initial={{ opacity: 0, y: 35 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-120px" }}
-              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+              {...getMotionProps("blog", "fade-left", 1000, 200)}
             >
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-end justify-between border-b border-zinc-150/50 dark:border-zinc-900 pb-5 font-mono">
                 <div className="lg:col-span-5 select-none">
@@ -1031,10 +1077,7 @@ export default function App() {
             <motion.section
               className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start pt-10"
               id="contact"
-              initial={{ opacity: 0, y: 35 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-120px" }}
-              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+              {...getMotionProps("contact", "fade-right", 1000, 150)}
             >
               {/* Context text left */}
               <div className="lg:col-span-5 space-y-4 font-mono select-none">
@@ -1056,6 +1099,7 @@ export default function App() {
                     <span>COG_SECONDRY: ACTIVE</span>
                   </div>
                 </div>
+
               </div>
 
               {/* Real-time validated input box */}
