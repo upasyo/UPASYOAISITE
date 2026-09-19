@@ -35,6 +35,7 @@ import {
   Check
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { Analytics } from "@vercel/analytics/react";
 
 import { 
   fetchDoc, 
@@ -1497,6 +1498,8 @@ export default function App() {
         linkedinUrl={siteSettings?.linkedinUrl || "https://www.linkedin.com/in/upasyokushari/"}
         userEmail="upasyokushari@gmail.com"
       />
+      {/* VERCEL WEB ANALYTICS */}
+      <Analytics />
     </div>
   );
 }
