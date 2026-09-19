@@ -10,14 +10,23 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Enable strong ETags for efficient 304 Not Modified conditional cache revalidation
+  app.set("etag", "strong");
+
   // Middleware to parse json requests
   app.use(express.json());
 
-  // Disable caching for all API endpoints to guarantee real-time updates
+  // Set appropriate cache lifetimes for API endpoints
   app.use("/api", (req, res, next) => {
-    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
-    res.setHeader("Pragma", "no-cache");
-    res.setHeader("Expires", "0");
+    if (req.path === "/health" && req.method === "GET") {
+      // Health check endpoint: short efficient cache lifetime with background revalidation
+      res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=60");
+    } else {
+      // Dynamic mutating endpoints (chat, inquiry submission): real-time, no-store
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
+    }
     next();
   });
 
@@ -153,34 +162,56 @@ Guidelines:
   } else {
     const distPath = path.join(process.cwd(), "dist");
     
-    // Serve static assets with cache-busting/versioning strategy
+    // Serve static assets with fine-grained, efficient cache lifetimes (Lighthouse & Core Web Vitals standard)
     app.use(express.static(distPath, {
-      maxAge: "1d", // Default fallback
+      etag: true,
+      lastModified: true,
       setHeaders: (res, filePath) => {
-        // If it's index.html, we must prevent caching so updates are loaded immediately
-        if (filePath.endsWith("index.html")) {
-          res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
-          res.setHeader("Pragma", "no-cache");
-          res.setHeader("Expires", "0");
-        } else if (filePath.includes("/assets/")) {
-          // Vite generated assets are fingerprinted with hashes (e.g., index-[hash].js)
-          // Thus we can safely cache them forever as any update will change the hash
-          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-        } else {
-          // Other assets (like public icons, favicon etc.) can be checked frequently
-          res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
+        const normalized = filePath.replace(/\\/g, "/").toLowerCase();
+        
+        // 1. HTML entrypoint: must be revalidated each time to guarantee instant deployment updates
+        // With strong ETags, unchanged visits receive a 304 Not Modified instantly without data payload
+        if (normalized.endsWith(".html") || normalized.endsWith("index.html")) {
+          res.setHeader("Cache-Control", "no-cache, must-revalidate, max-age=0");
+          return;
         }
+
+        // 2. Vite-fingerprinted hashed assets (JavaScript, CSS, Wasm bundles):
+        // File content hash is baked into the filename (e.g. index-B39f0a.js), making them 100% immutable
+        if (normalized.includes("/assets/") || /-[a-f0-9]{8,}\.(js|css|wasm)$/i.test(normalized)) {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          return;
+        }
+
+        // 3. Web fonts: immutable across versions
+        if (/\.(woff2?|ttf|otf|eot)$/i.test(normalized)) {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          return;
+        }
+
+        // 4. Static media, images, and graphics: 30 days cache with 1 day stale-while-revalidate
+        if (/\.(png|jpe?g|webp|svg|gif|ico|avif|mp3|mp4|webm)$/i.test(normalized)) {
+          res.setHeader("Cache-Control", "public, max-age=2592000, stale-while-revalidate=86400");
+          return;
+        }
+
+        // 5. App manifests, robots, sitemaps: 1 day cache with 1 hour stale-while-revalidate
+        if (/\.(webmanifest|json|txt|xml)$/i.test(normalized)) {
+          res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=3600");
+          return;
+        }
+
+        // 6. Generic fallback: 1 day with validation
+        res.setHeader("Cache-Control", "public, max-age=86400, must-revalidate");
       }
     }));
 
     app.get("*", (req, res) => {
-      // Force no-cache on SPA html delivery as well
-      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
-      res.setHeader("Pragma", "no-cache");
-      res.setHeader("Expires", "0");
+      // Revalidate HTML entry point with ETags for zero-overhead 304 responses on unchanged builds
+      res.setHeader("Cache-Control", "no-cache, must-revalidate, max-age=0");
       res.sendFile(path.join(distPath, "index.html"));
     });
-    console.log("Prod: Serving compiled static assets from dist/ with robust cache-busting headers.");
+    console.log("Prod: Serving compiled static assets with optimized, efficient cache lifetimes.");
   }
 
   app.listen(PORT, "0.0.0.0", () => {

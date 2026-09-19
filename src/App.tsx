@@ -185,8 +185,8 @@ export default function App() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // 3. Load Data & Seed on mount
-  const loadProfileParameters = async (silent = false) => {
+  // 3. Load Data & Seed on mount with efficient cache lifetimes
+  const loadProfileParameters = async (silent = false, bypassCache = false) => {
     if (!silent) setLoading(true);
     try {
       // First seed the database if it is empty, catch error gracefully
@@ -196,32 +196,32 @@ export default function App() {
         console.warn("Database Seeding Failed or Bypassed:", seedErr);
       }
 
-      // Load parameters
+      // Load parameters from cache or Firestore
       let siteSnap = null;
       let heroSnap = null;
       let aboutSnap = null;
       let visionSnap = null;
 
       try {
-        siteSnap = await fetchDoc(COLLECTIONS.SITE_SETTINGS, "default");
+        siteSnap = await fetchDoc(COLLECTIONS.SITE_SETTINGS, "default", bypassCache);
       } catch (e) {
         console.error("Error fetching siteSettings doc:", e);
       }
 
       try {
-        heroSnap = await fetchDoc(COLLECTIONS.HERO, "default");
+        heroSnap = await fetchDoc(COLLECTIONS.HERO, "default", bypassCache);
       } catch (e) {
         console.error("Error fetching hero doc:", e);
       }
 
       try {
-        aboutSnap = await fetchDoc(COLLECTIONS.ABOUT, "default");
+        aboutSnap = await fetchDoc(COLLECTIONS.ABOUT, "default", bypassCache);
       } catch (e) {
         console.error("Error fetching about doc:", e);
       }
 
       try {
-        visionSnap = await fetchDoc(COLLECTIONS.RESEARCH_VISION, "default");
+        visionSnap = await fetchDoc(COLLECTIONS.RESEARCH_VISION, "default", bypassCache);
       } catch (e) {
         console.error("Error fetching researchVision doc:", e);
       }
@@ -253,7 +253,7 @@ export default function App() {
 
       let areas = [];
       try {
-        areas = await fetchCollection(COLLECTIONS.RESEARCH_AREAS);
+        areas = await fetchCollection(COLLECTIONS.RESEARCH_AREAS, true, bypassCache);
       } catch (e) {
         console.error("Error fetching researchAreas:", e);
       }
@@ -261,7 +261,7 @@ export default function App() {
 
       let projs = [];
       try {
-        projs = await fetchCollection(COLLECTIONS.PROJECTS);
+        projs = await fetchCollection(COLLECTIONS.PROJECTS, true, bypassCache);
       } catch (e) {
         console.error("Error fetching projects:", e);
       }
@@ -269,7 +269,7 @@ export default function App() {
 
       let pubs = [];
       try {
-        pubs = await fetchCollection(COLLECTIONS.PUBLICATIONS);
+        pubs = await fetchCollection(COLLECTIONS.PUBLICATIONS, true, bypassCache);
       } catch (e) {
         console.error("Error fetching publications:", e);
       }
@@ -277,7 +277,7 @@ export default function App() {
 
       let achs = [];
       try {
-        achs = await fetchCollection(COLLECTIONS.ACHIEVEMENTS);
+        achs = await fetchCollection(COLLECTIONS.ACHIEVEMENTS, true, bypassCache);
       } catch (e) {
         console.error("Error fetching achievements:", e);
       }
@@ -285,7 +285,7 @@ export default function App() {
 
       let blogs = [];
       try {
-        blogs = await fetchCollection(COLLECTIONS.BLOG_POSTS);
+        blogs = await fetchCollection(COLLECTIONS.BLOG_POSTS, true, bypassCache);
       } catch (e) {
         console.error("Error fetching blogPosts:", e);
       }
@@ -293,7 +293,7 @@ export default function App() {
 
       let anims = [];
       try {
-        anims = await fetchCollection(COLLECTIONS.ANIMATIONS, false);
+        anims = await fetchCollection(COLLECTIONS.ANIMATIONS, false, bypassCache);
       } catch (e) {
         console.error("Error fetching animations:", e);
       }

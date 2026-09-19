@@ -428,6 +428,8 @@ export async function syncQuantumSeedToDatabase() {
     }
     
     console.log("Firebase database successfully synchronized with Quantum Computing Research Profile!");
+    // Invalidate client-side caches so the fresh seed data is immediately visible
+    invalidateCache();
     return true;
   } catch (error) {
     console.error("Failed to sync quantum seed to database:", error);
@@ -435,22 +437,220 @@ export async function syncQuantumSeedToDatabase() {
   }
 }
 
-// Read Helpers
-export async function fetchDoc(collectionName: string, docId: string = "default", bypassCache: boolean = true) {
+// =========================================================
+// EFFICIENT CLIENT-SIDE CACHING ENGINE
+// =========================================================
+
+export const CACHE_LIFETIMES = {
+  // General portfolio & research content: 5 minutes TTL
+  CONTENT_TTL_MS: 5 * 60 * 1000,
+  // Curriculum Vitae & Resume: 10 minutes TTL
+  RESUME_TTL_MS: 10 * 60 * 1000,
+  // Contact inquiries & messages: 30 seconds TTL
+  MESSAGES_TTL_MS: 30 * 1000,
+  // Site configuration & navigation: 15 minutes TTL
+  SETTINGS_TTL_MS: 15 * 60 * 1000,
+};
+
+interface CacheRecord<T = any> {
+  data: T;
+  timestamp: number;
+  ttl: number;
+}
+
+// In-memory high-speed cache map
+const memoryCache = new Map<string, CacheRecord>();
+
+function getStorageKey(key: string): string {
+  return `upasyo_cache:${key}`;
+}
+
+export function getCachedItem<T>(key: string): { data: T; isStale: boolean } | null {
+  const now = Date.now();
+  
+  // 1. Check in-memory RAM cache first
+  const mem = memoryCache.get(key);
+  if (mem) {
+    const isStale = (now - mem.timestamp) > mem.ttl;
+    return { data: mem.data as T, isStale };
+  }
+
+  // 2. Check localStorage cache for cross-session/reloads
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem(getStorageKey(key));
+      if (stored) {
+        const parsed = JSON.parse(stored) as CacheRecord<T>;
+        if (parsed && parsed.data !== undefined) {
+          memoryCache.set(key, parsed);
+          const isStale = (now - parsed.timestamp) > parsed.ttl;
+          return { data: parsed.data, isStale };
+        }
+      }
+    } catch {
+      // Storage parsing or access error ignored
+    }
+  }
+
+  return null;
+}
+
+export function setCachedItem<T>(key: string, data: T, ttl: number = CACHE_LIFETIMES.CONTENT_TTL_MS): void {
+  const record: CacheRecord<T> = {
+    data,
+    timestamp: Date.now(),
+    ttl
+  };
+
+  memoryCache.set(key, record);
+
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem(getStorageKey(key), JSON.stringify(record));
+    } catch {
+      // Quota exceeded or private browsing error ignored
+    }
+  }
+}
+
+export function invalidateCache(patternOrPrefix?: string): void {
+  if (!patternOrPrefix) {
+    // Purge entire application memory and local cache
+    memoryCache.clear();
+    if (typeof window !== "undefined") {
+      try {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith("upasyo_cache:")) {
+            keysToRemove.push(k);
+          }
+        }
+        keysToRemove.forEach(k => localStorage.removeItem(k));
+      } catch {}
+    }
+    return;
+  }
+
+  // Purge memory cache matching pattern
+  for (const k of memoryCache.keys()) {
+    if (k.includes(patternOrPrefix)) {
+      memoryCache.delete(k);
+    }
+  }
+
+  // Purge localStorage cache matching pattern
+  if (typeof window !== "undefined") {
+    try {
+      const prefix = getStorageKey(patternOrPrefix);
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith(prefix) || k.includes(patternOrPrefix))) {
+          keysToRemove.push(k);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+    } catch {}
+  }
+}
+
+export function clearClientCache(): void {
+  invalidateCache();
+}
+
+// Background revalidation helper
+function backgroundRevalidateDoc(collectionName: string, docId: string, cacheKey: string, ttl: number) {
+  try {
+    const docRef = doc(db, collectionName, docId);
+    getDoc(docRef).then((snap) => {
+      if (snap.exists()) {
+        setCachedItem(cacheKey, snap.data(), ttl);
+      }
+    }).catch(() => {});
+  } catch {}
+}
+
+function backgroundRevalidateCollection(collectionName: string, sortByOrder: boolean, cacheKey: string, ttl: number) {
+  try {
+    const colRef = collection(db, collectionName);
+    const q = sortByOrder ? query(colRef, orderBy("order", "asc")) : colRef;
+    getDocs(q).then((snap) => {
+      const items: any[] = [];
+      snap.forEach((d) => items.push({ id: d.id, ...d.data() }));
+      setCachedItem(cacheKey, items, ttl);
+    }).catch(() => {});
+  } catch {}
+}
+
+// Read Helpers with Efficient Cache Lifetimes & Stale-While-Revalidate
+export async function fetchDoc(
+  collectionName: string, 
+  docId: string = "default", 
+  bypassCache: boolean = false,
+  customTtlMs?: number
+) {
+  const cacheKey = `doc:${collectionName}:${docId}`;
+  const effectiveTtl = customTtlMs || (
+    collectionName === COLLECTIONS.SITE_SETTINGS ? CACHE_LIFETIMES.SETTINGS_TTL_MS :
+    collectionName === COLLECTIONS.RESUME ? CACHE_LIFETIMES.RESUME_TTL_MS :
+    CACHE_LIFETIMES.CONTENT_TTL_MS
+  );
+
+  // Check cache if bypassCache is not requested
+  if (!bypassCache) {
+    const cached = getCachedItem<any>(cacheKey);
+    if (cached) {
+      // If within lifetime, return cached data immediately
+      if (!cached.isStale) {
+        return cached.data;
+      }
+      // If stale, return cached data immediately for 0-latency UI, and revalidate in background
+      backgroundRevalidateDoc(collectionName, docId, cacheKey, effectiveTtl);
+      return cached.data;
+    }
+  }
+
   try {
     const docRef = doc(db, collectionName, docId);
     const snap = bypassCache ? await getDocFromServer(docRef) : await getDoc(docRef);
     if (snap.exists()) {
-      return snap.data();
+      const data = snap.data();
+      setCachedItem(cacheKey, data, effectiveTtl);
+      return data;
     }
     return null;
   } catch (err) {
     console.error(`Error fetching document ${docId} from ${collectionName}:`, err);
-    return null;
+    const fallback = getCachedItem<any>(cacheKey);
+    return fallback ? fallback.data : null;
   }
 }
 
-export async function fetchCollection(collectionName: string, sortByOrder: boolean = true, bypassCache: boolean = true) {
+export async function fetchCollection(
+  collectionName: string, 
+  sortByOrder: boolean = true, 
+  bypassCache: boolean = false,
+  customTtlMs?: number
+) {
+  const cacheKey = `col:${collectionName}:${sortByOrder ? "ordered" : "raw"}`;
+  const effectiveTtl = customTtlMs || (
+    collectionName === COLLECTIONS.CONTACT_MESSAGES ? CACHE_LIFETIMES.MESSAGES_TTL_MS :
+    CACHE_LIFETIMES.CONTENT_TTL_MS
+  );
+
+  if (!bypassCache) {
+    const cached = getCachedItem<any[]>(cacheKey);
+    if (cached) {
+      if (!cached.isStale) {
+        return cached.data;
+      }
+      // Return immediately and revalidate in background
+      backgroundRevalidateCollection(collectionName, sortByOrder, cacheKey, effectiveTtl);
+      return cached.data;
+    }
+  }
+
   try {
     const colRef = collection(db, collectionName);
     const q = sortByOrder ? query(colRef, orderBy("order", "asc")) : colRef;
@@ -459,6 +659,7 @@ export async function fetchCollection(collectionName: string, sortByOrder: boole
     snap.forEach((doc) => {
       items.push({ id: doc.id, ...doc.data() });
     });
+    setCachedItem(cacheKey, items, effectiveTtl);
     return items;
   } catch (err) {
     // If the query fails due to missing order field or query indexing, fall back to plain fetch and simple client side ordering
@@ -472,19 +673,23 @@ export async function fetchCollection(collectionName: string, sortByOrder: boole
       if (sortByOrder) {
         items.sort((a, b) => (a.order || 99) - (b.order || 100));
       }
+      setCachedItem(cacheKey, items, effectiveTtl);
       return items;
     } catch (nestedErr) {
       console.error(`Error fetching collection ${collectionName}:`, nestedErr);
-      return [];
+      const fallback = getCachedItem<any[]>(cacheKey);
+      return fallback ? fallback.data : [];
     }
   }
 }
 
-// Write/Upsert Helpers
+// Write/Upsert Helpers with automatic cache invalidation
 export async function updateOrCreateDoc(collectionName: string, docId: string, data: any) {
   try {
     const docRef = doc(db, collectionName, docId);
     await setDoc(docRef, data, { merge: true });
+    // Invalidate both the document and collection caches for this collection
+    invalidateCache(collectionName);
     return true;
   } catch (err) {
     console.error(`Error updating document ${docId} inside ${collectionName}:`, err);
@@ -496,6 +701,8 @@ export async function deleteDocument(collectionName: string, docId: string) {
   try {
     const docRef = doc(db, collectionName, docId);
     await deleteDoc(docRef);
+    // Invalidate cached records for this collection
+    invalidateCache(collectionName);
     return true;
   } catch (err) {
     console.error(`Error deleting document ${docId} from ${collectionName}:`, err);
@@ -756,12 +963,22 @@ export const DEFAULT_RESUME_DATA: ResumeData = {
   ]
 };
 
-// Fetch Resume Data from Firestore with localStorage & seed fallback
-export async function fetchResumeData(): Promise<ResumeData> {
+// Fetch Resume Data from cache/Firestore with 10-minute cache lifetime
+export async function fetchResumeData(bypassCache: boolean = false): Promise<ResumeData> {
+  const cacheKey = `doc:${COLLECTIONS.RESUME}:default`;
+  
+  if (!bypassCache) {
+    const cached = getCachedItem<ResumeData>(cacheKey);
+    if (cached && !cached.isStale) {
+      return { ...DEFAULT_RESUME_DATA, ...cached.data };
+    }
+  }
+
   try {
-    const docData = await fetchDoc(COLLECTIONS.RESUME, "default");
+    const docData = await fetchDoc(COLLECTIONS.RESUME, "default", bypassCache, CACHE_LIFETIMES.RESUME_TTL_MS);
     if (docData && docData.name) {
       localStorage.setItem("upasyo_resume_data", JSON.stringify(docData));
+      setCachedItem(cacheKey, docData, CACHE_LIFETIMES.RESUME_TTL_MS);
       return { ...DEFAULT_RESUME_DATA, ...docData } as ResumeData;
     }
   } catch (err) {
@@ -771,7 +988,9 @@ export async function fetchResumeData(): Promise<ResumeData> {
   const cached = localStorage.getItem("upasyo_resume_data");
   if (cached) {
     try {
-      return { ...DEFAULT_RESUME_DATA, ...JSON.parse(cached) };
+      const parsed = JSON.parse(cached);
+      setCachedItem(cacheKey, parsed, CACHE_LIFETIMES.RESUME_TTL_MS);
+      return { ...DEFAULT_RESUME_DATA, ...parsed };
     } catch {
       // ignore JSON parse error
     }
@@ -810,7 +1029,11 @@ export async function saveResumeData(data: ResumeData, adminPasscodeAttempt?: st
     throw new Error("UNAUTHORIZED_ACCESS: Only the person with the proper correct passcode of CMS admin can edit and save the CV.");
   }
 
+  // Update both cache and local storage immediately
+  setCachedItem(`doc:${COLLECTIONS.RESUME}:default`, data, CACHE_LIFETIMES.RESUME_TTL_MS);
   localStorage.setItem("upasyo_resume_data", JSON.stringify(data));
+  invalidateCache(COLLECTIONS.RESUME);
+
   try {
     await updateOrCreateDoc(COLLECTIONS.RESUME, "default", data);
     return true;

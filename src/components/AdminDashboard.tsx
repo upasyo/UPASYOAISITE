@@ -138,12 +138,12 @@ export default function AdminDashboard({
 
   const adminPasscode = "Upasyo@2007"; // User configured passcode
 
-  // Fetch all CMS options
-  const loadCmsData = async () => {
-    const siteSnap = await fetchDoc(COLLECTIONS.SITE_SETTINGS, "default");
-    const heroSnap = await fetchDoc(COLLECTIONS.HERO, "default");
-    const aboutSnap = await fetchDoc(COLLECTIONS.ABOUT, "default");
-    const visionSnap = await fetchDoc(COLLECTIONS.RESEARCH_VISION, "default");
+  // Fetch all CMS options with efficient caching
+  const loadCmsData = async (bypassCache: boolean = false) => {
+    const siteSnap = await fetchDoc(COLLECTIONS.SITE_SETTINGS, "default", bypassCache);
+    const heroSnap = await fetchDoc(COLLECTIONS.HERO, "default", bypassCache);
+    const aboutSnap = await fetchDoc(COLLECTIONS.ABOUT, "default", bypassCache);
+    const visionSnap = await fetchDoc(COLLECTIONS.RESEARCH_VISION, "default", bypassCache);
 
     const loadedSite = siteSnap ? { ...SEED_DATA.siteSettings, ...siteSnap } : SEED_DATA.siteSettings;
     loadedSite.buttons = { ...SEED_DATA.siteSettings.buttons, ...loadedSite.buttons };
@@ -153,15 +153,15 @@ export default function AdminDashboard({
     setResearchVision(visionSnap ? { ...SEED_DATA.researchVision, ...visionSnap } : SEED_DATA.researchVision);
 
     // List collections
-    const rAreas = await fetchCollection(COLLECTIONS.RESEARCH_AREAS);
-    const projs = await fetchCollection(COLLECTIONS.PROJECTS);
-    const pubs = await fetchCollection(COLLECTIONS.PUBLICATIONS);
-    const achs = await fetchCollection(COLLECTIONS.ACHIEVEMENTS);
-    const blogs = await fetchCollection(COLLECTIONS.BLOG_POSTS);
-    const kb = await fetchCollection(COLLECTIONS.KNOWLEDGE_BASE);
-    const links = await fetchCollection(COLLECTIONS.BUTTON_LINKS);
-    const msgs = await fetchCollection(COLLECTIONS.CONTACT_MESSAGES, false);
-    const anims = await fetchCollection(COLLECTIONS.ANIMATIONS, false);
+    const rAreas = await fetchCollection(COLLECTIONS.RESEARCH_AREAS, true, bypassCache);
+    const projs = await fetchCollection(COLLECTIONS.PROJECTS, true, bypassCache);
+    const pubs = await fetchCollection(COLLECTIONS.PUBLICATIONS, true, bypassCache);
+    const achs = await fetchCollection(COLLECTIONS.ACHIEVEMENTS, true, bypassCache);
+    const blogs = await fetchCollection(COLLECTIONS.BLOG_POSTS, true, bypassCache);
+    const kb = await fetchCollection(COLLECTIONS.KNOWLEDGE_BASE, true, bypassCache);
+    const links = await fetchCollection(COLLECTIONS.BUTTON_LINKS, true, bypassCache);
+    const msgs = await fetchCollection(COLLECTIONS.CONTACT_MESSAGES, false, bypassCache);
+    const anims = await fetchCollection(COLLECTIONS.ANIMATIONS, false, bypassCache);
 
     setResearchAreas(rAreas && rAreas.length > 0 ? rAreas : SEED_DATA.researchAreas);
     setProjects(projs && projs.length > 0 ? projs : SEED_DATA.projects);
@@ -173,7 +173,7 @@ export default function AdminDashboard({
     setAnimations(anims && anims.length > 0 ? anims : SEED_DATA.animations);
     
     // Load Resume Data
-    const rData = await fetchResumeData();
+    const rData = await fetchResumeData(bypassCache);
     if (rData) setResumeData(rData);
 
     // Sort contact messages by timestamp descending
