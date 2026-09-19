@@ -29,7 +29,10 @@ import {
   Facebook,
   Instagram,
   MessageCircle,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Calendar,
+  Copy,
+  Check
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
@@ -114,9 +117,20 @@ export default function App() {
   const [contactEmail, setContactEmail] = useLocalStorageState("contact_email", "");
   const [contactSubject, setContactSubject] = useLocalStorageState("contact_subject", "");
   const [contactMessage, setContactMessage] = useLocalStorageState("contact_message", "");
+  const [contactDate, setContactDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [contactLoading, setContactLoading] = useState(false);
   const [contactSuccess, setContactSuccess] = useState(false);
   const [contactError, setContactError] = useState(false);
+  const [submittedData, setSubmittedData] = useState<{
+    date: string;
+    formattedDate: string;
+    formattedTime: string;
+    name: string;
+    email: string;
+    subject: string;
+    message: string;
+  } | null>(null);
+  const [copiedRow, setCopiedRow] = useState(false);
 
   // Admin Dashboard drawer state
   const [displayAdmin, setDisplayAdmin] = useState(false);
@@ -366,13 +380,30 @@ export default function App() {
 
     setContactLoading(true);
     try {
-      await submitContactMessage(contactName, contactEmail, contactSubject || "Inquiry", contactMessage);
+      const activeDate = contactDate || new Date().toISOString().split("T")[0];
+      const result = await submitContactMessage(
+        contactName, 
+        contactEmail, 
+        contactSubject || "Inquiry", 
+        contactMessage,
+        activeDate,
+        siteSettings?.spreadsheetWebhookUrl
+      );
+
+      setSubmittedData({
+        date: result.date || activeDate,
+        formattedDate: result.formattedDate || new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
+        formattedTime: result.formattedTime || new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+        name: contactName,
+        email: contactEmail,
+        subject: contactSubject || "Inquiry",
+        message: contactMessage
+      });
       setContactSuccess(true);
       setContactName("");
       setContactEmail("");
       setContactSubject("");
       setContactMessage("");
-      setTimeout(() => setContactSuccess(false), 8000);
     } catch (err) {
       setContactError(true);
       setTimeout(() => setContactError(false), 8000);
@@ -1167,27 +1198,82 @@ export default function App() {
               {/* Real-time validated input box */}
               <div className="lg:col-span-7 card-premium p-6 sm:p-8">
                 {contactSuccess ? (
-                  <div className="py-12 flex flex-col items-center text-center space-y-4">
+                  <div className="py-8 flex flex-col items-center text-center space-y-4">
                     <div className="w-12 h-12 rounded-full bg-pink-100 dark:bg-pink-900/30 border border-pink-200 text-brand-accent-pink flex items-center justify-center">
                       <CheckCircle2 className="w-6 h-6 animate-bounce" />
                     </div>
-                    <h3 className="font-mono text-sm font-bold uppercase tracking-wider text-gray-950 dark:text-white">{t("COGNITIVE TUNNEL READY")}</h3>
-                    <p className="text-xs text-zinc-650 dark:text-zinc-300 max-w-sm font-sans select-text">
-                      {t("Your entry variables were recorded onto active indexes successfully. UPASYO's scheduling algorithms will assess parameters shortly.")}
+                    <h3 className="font-mono text-sm font-bold uppercase tracking-wider text-gray-950 dark:text-white">
+                      {t("INQUIRY TRANSMITTED & SPREADSHEET LOGGED")}
+                    </h3>
+                    <p className="text-xs text-zinc-650 dark:text-zinc-300 max-w-md font-sans select-text">
+                      {t("Your entry variables and the transmission date were captured and stored into the database and spreadsheet tracking index.")}
                     </p>
+
+                    {submittedData && (
+                      <div className="w-full max-w-md p-4 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-left space-y-2 font-mono text-xs">
+                        <div className="flex items-center justify-between border-b border-emerald-200/60 dark:border-emerald-800/60 pb-2">
+                          <span className="text-emerald-800 dark:text-emerald-300 font-bold flex items-center gap-1.5 text-[11px]">
+                            <Calendar className="w-3.5 h-3.5" />
+                            SPREADSHEET FORM DATE:
+                          </span>
+                          <span className="font-bold text-emerald-950 dark:text-emerald-100 bg-emerald-200/70 dark:bg-emerald-900/70 px-2 py-0.5 rounded text-xs">
+                            {submittedData.date}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-[11px] text-zinc-600 dark:text-zinc-300 pt-1">
+                          <div><span className="text-zinc-400">TIME:</span> {submittedData.formattedTime}</div>
+                          <div><span className="text-zinc-400">NAME:</span> {submittedData.name}</div>
+                          <div className="col-span-2 truncate"><span className="text-zinc-400">EMAIL:</span> {submittedData.email}</div>
+                          <div className="col-span-2 truncate"><span className="text-zinc-400">SUBJECT:</span> {submittedData.subject}</div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                      <a
+                        href={siteSettings.spreadsheetUrl || "https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit?usp=sharing"}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-mono font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer shadow-xs"
+                      >
+                        <FileSpreadsheet className="w-4 h-4" />
+                        <span>OPEN GOOGLE SPREADSHEET</span>
+                        <ExternalLink className="w-3 h-3 ml-0.5" />
+                      </a>
+
+                      {submittedData && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const rowTsv = `${submittedData.date}\t${submittedData.formattedTime}\t${submittedData.name}\t${submittedData.email}\t${submittedData.subject}\t${submittedData.message}`;
+                            navigator.clipboard.writeText(rowTsv);
+                            setCopiedRow(true);
+                            setTimeout(() => setCopiedRow(false), 3000);
+                          }}
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-mono font-bold bg-zinc-800 hover:bg-zinc-700 text-white dark:bg-zinc-200 dark:text-zinc-900 dark:hover:bg-white transition-colors cursor-pointer shadow-xs"
+                        >
+                          {copiedRow ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                          <span>{copiedRow ? "COPIED FOR SPREADSHEET!" : "COPY ROW FOR SPREADSHEET"}</span>
+                        </button>
+                      )}
+                    </div>
+
                     {siteSettings?.buttons?.resetPortal?.enabled !== false && (
                       <button
-                        onClick={() => setContactSuccess(false)}
-                        className="text-xs font-mono font-bold cursor-pointer uppercase tracking-widest hover:underline"
+                        onClick={() => {
+                          setContactSuccess(false);
+                          setSubmittedData(null);
+                        }}
+                        className="text-xs font-mono font-bold cursor-pointer uppercase tracking-widest hover:underline pt-2"
                         style={siteSettings?.buttons?.resetPortal?.color ? { color: siteSettings.buttons.resetPortal.color } : { color: "var(--color-brand-accent-pink)" }}
                       >
-                        {t(siteSettings?.buttons?.resetPortal?.name || "RESET_TELEMETRY_PORTAL")}
+                        {t(siteSettings?.buttons?.resetPortal?.name || "TRANSMIT_ANOTHER_INQUIRY")}
                       </button>
                     )}
                   </div>
                 ) : (
                   <form onSubmit={handleContactSubmit} className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
                         <label className="block text-[10px] font-mono font-bold text-zinc-550 dark:text-zinc-450 uppercase mb-1.5 tracking-wider">{t("VISITOR_NAME")}</label>
                         <input
@@ -1208,6 +1294,23 @@ export default function App() {
                           onChange={(e) => setContactEmail(e.target.value)}
                           placeholder={t("vance@cognitive.org")}
                           className="w-full bg-white dark:bg-zinc-900/50 border border-zinc-200/50 dark:border-zinc-800 rounded-xl px-4 py-2.5 text-sm dark:text-white focus:outline-none focus:border-brand-accent-pink transition-colors shadow-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 uppercase mb-1.5 tracking-wider flex items-center justify-between">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {t("FORM_DATE")}
+                          </span>
+                          <span className="text-[9px] font-normal text-emerald-600 dark:text-emerald-400">SPREADSHEET</span>
+                        </label>
+                        <input
+                          type="date"
+                          required
+                          value={contactDate}
+                          onChange={(e) => setContactDate(e.target.value)}
+                          className="w-full bg-white dark:bg-zinc-900/50 border border-emerald-300/80 dark:border-emerald-700/80 rounded-xl px-3.5 py-2.5 text-xs font-mono dark:text-white focus:outline-none focus:border-emerald-500 transition-colors shadow-xs"
+                          title="Date of the form inserted to spreadsheet upon transmitting inquiry"
                         />
                       </div>
                     </div>
@@ -1245,7 +1348,7 @@ export default function App() {
                       <button
                         type="submit"
                         disabled={contactLoading}
-                        className="btn-primary-quantum w-full sm:w-auto"
+                        className="btn-primary-quantum w-full sm:w-auto flex items-center justify-center gap-2"
                         style={siteSettings?.buttons?.inquiry?.color ? { backgroundColor: siteSettings.buttons.inquiry.color, borderColor: siteSettings.buttons.inquiry.color } : {}}
                       >
                         {contactLoading ? (
@@ -1253,7 +1356,8 @@ export default function App() {
                         ) : (
                           <Send className="w-4 h-4 text-brand-accent-pink" />
                         )}
-                        {t(siteSettings?.buttons?.inquiry?.name || "TRANSMIT_INQUIRY")}
+                        <span>{t(siteSettings?.buttons?.inquiry?.name || "TRANSMIT_INQUIRY")}</span>
+                        <span className="text-[10px] opacity-75 font-mono ml-1">({contactDate})</span>
                       </button>
                     )}
                   </form>

@@ -26,6 +26,52 @@ async function startServer() {
     res.json({ status: "ok", time: new Date().toISOString() });
   });
 
+  // API Route - Record Inbound Contact Inquiries with Date for Spreadsheet Tracking
+  app.post("/api/record-inquiry", async (req, res) => {
+    try {
+      const { name, email, subject, message, date, formattedDate, formattedTime, timestamp, spreadsheetWebhookUrl } = req.body;
+      const submissionDate = date || new Date().toISOString().split("T")[0];
+      const submissionTime = formattedTime || new Date().toLocaleTimeString();
+      const submissionTimestamp = timestamp || new Date().toISOString();
+
+      console.log(`[Form Inbound Recorded] Date: ${submissionDate} ${submissionTime} | Name: ${name} | Email: ${email} | Subject: ${subject}`);
+
+      // Forward to Google Apps Script / Spreadsheet Webhook if specified
+      const webhook = spreadsheetWebhookUrl || process.env.SPREADSHEET_WEBHOOK_URL;
+      if (webhook && typeof webhook === "string" && webhook.startsWith("http")) {
+        try {
+          const webhookResp = await fetch(webhook, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              date: submissionDate,
+              time: submissionTime,
+              timestamp: submissionTimestamp,
+              name: name || "Anonymous",
+              email: email || "No email",
+              subject: subject || "Inquiry",
+              message: message || ""
+            })
+          });
+          console.log(`[Spreadsheet Webhook Dispatched] Target: ${webhook} | Status: ${webhookResp.status}`);
+        } catch (webhookErr) {
+          console.warn("[Spreadsheet Webhook Dispatch Warning]:", webhookErr);
+        }
+      }
+
+      res.json({ 
+        success: true, 
+        message: "Form inquiry and date logged for spreadsheet successfully", 
+        date: submissionDate,
+        time: submissionTime,
+        timestamp: submissionTimestamp 
+      });
+    } catch (err: any) {
+      console.error("Error in /api/record-inquiry:", err);
+      res.status(500).json({ error: err.message || "Failed to record inquiry" });
+    }
+  });
+
   // API Route - AI Assistant Chat Endpoint
   app.post("/api/chat", async (req, res) => {
     try {

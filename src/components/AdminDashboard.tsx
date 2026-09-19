@@ -22,7 +22,10 @@ import {
   Video,
   FileSpreadsheet,
   ExternalLink,
-  Download
+  Download,
+  Calendar,
+  Copy,
+  Check
 } from "lucide-react";
 import { 
   db, 
@@ -75,6 +78,8 @@ export default function AdminDashboard({
   const [resumeData, setResumeData] = useState<ResumeData>(DEFAULT_RESUME_DATA);
   const [isSavingResume, setIsSavingResume] = useState(false);
   const [resumeSaveMsg, setResumeSaveMsg] = useState("");
+  const [copiedAllMessages, setCopiedAllMessages] = useState(false);
+  const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
 
   // Safe Action Status Banners
   const [actionStatus, setActionStatus] = useState<{ type: "success" | "error" | null; message: string }>({ type: null, message: "" });
@@ -826,6 +831,22 @@ export default function AdminDashboard({
                   <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono">
                     Google Spreadsheet where contact form inquiries are tracked. Also accessible to visitors at the bottom of the website and in your CMS Messages tab.
                   </p>
+
+                  <div className="pt-2">
+                    <label className="block text-xs font-mono font-bold text-emerald-900 dark:text-emerald-300 mb-1">
+                      (OPTIONAL) GOOGLE APPS SCRIPT WEBHOOK URL FOR LIVE SPREADSHEET APPENDS
+                    </label>
+                    <input
+                      type="url"
+                      value={siteSettings.spreadsheetWebhookUrl || ""}
+                      onChange={(e) => setSiteSettings({ ...siteSettings, spreadsheetWebhookUrl: e.target.value })}
+                      className="w-full bg-white dark:bg-zinc-900 border border-emerald-200 dark:border-emerald-800 rounded-xl px-3.5 py-2.5 text-xs font-mono text-zinc-900 dark:text-zinc-100"
+                      placeholder="https://script.google.com/macros/s/.../exec"
+                    />
+                    <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono mt-1">
+                      If deployed via Google Apps Script web app, the form will automatically POST date, time, and inquiry payload directly to append rows to your Google Sheet upon clicking TRANSMIT_INQUIRY.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2164,30 +2185,67 @@ export default function AdminDashboard({
                 </a>
 
                 {messages.length > 0 && (
-                  <button
-                    onClick={() => {
-                      const headers = ["Timestamp", "Name", "Email", "Subject", "Message"];
-                      const rows = messages.map(m => [
-                        `"${(m.timestamp || "").replace(/"/g, '""')}"`,
-                        `"${(m.name || "").replace(/"/g, '""')}"`,
-                        `"${(m.email || "").replace(/"/g, '""')}"`,
-                        `"${(m.subject || "").replace(/"/g, '""')}"`,
-                        `"${(m.message || "").replace(/"/g, '""')}"`
-                      ]);
-                      const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-                      const encodedUri = encodeURI(csvContent);
-                      const link = document.createElement("a");
-                      link.setAttribute("href", encodedUri);
-                      link.setAttribute("download", `upasyo_contact_inquiries_${new Date().toISOString().slice(0, 10)}.csv`);
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                    }}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-mono font-bold bg-zinc-800 hover:bg-zinc-700 text-white dark:bg-zinc-200 dark:text-zinc-900 dark:hover:bg-white transition-colors cursor-pointer shadow-xs"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>EXPORT CSV</span>
-                  </button>
+                  <>
+                    <button
+                      onClick={() => {
+                        const headers = ["Date", "Time", "Timestamp", "Name", "Email", "Subject", "Message"];
+                        const rows = messages.map(m => {
+                          const dateStr = m.date || (m.timestamp ? m.timestamp.split('T')[0] : '');
+                          const timeStr = m.formattedTime || (m.timestamp ? new Date(m.timestamp).toLocaleTimeString() : '');
+                          return [
+                            dateStr,
+                            timeStr,
+                            m.timestamp || '',
+                            m.name || '',
+                            m.email || '',
+                            m.subject || '',
+                            (m.message || '').replace(/\r?\n|\r/g, ' ')
+                          ].join("\t");
+                        });
+                        const tsvContent = [headers.join("\t"), ...rows].join("\n");
+                        navigator.clipboard.writeText(tsvContent);
+                        setCopiedAllMessages(true);
+                        setTimeout(() => setCopiedAllMessages(false), 3000);
+                      }}
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-mono font-bold bg-emerald-700 hover:bg-emerald-800 text-white transition-colors cursor-pointer shadow-xs"
+                      title="Copy all responses with date formatted for direct paste into Google Sheets"
+                    >
+                      {copiedAllMessages ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      <span>{copiedAllMessages ? "COPIED FOR SHEETS!" : "COPY ALL FOR SPREADSHEET"}</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        const headers = ["Date", "Time", "Timestamp", "Name", "Email", "Subject", "Message"];
+                        const rows = messages.map(m => {
+                          const dateStr = m.date || (m.timestamp ? m.timestamp.split('T')[0] : '');
+                          const timeStr = m.formattedTime || (m.timestamp ? new Date(m.timestamp).toLocaleTimeString() : '');
+                          return [
+                            `"${dateStr.replace(/"/g, '""')}"`,
+                            `"${timeStr.replace(/"/g, '""')}"`,
+                            `"${(m.timestamp || "").replace(/"/g, '""')}"`,
+                            `"${(m.name || "").replace(/"/g, '""')}"`,
+                            `"${(m.email || "").replace(/"/g, '""')}"`,
+                            `"${(m.subject || "").replace(/"/g, '""')}"`,
+                            `"${(m.message || "").replace(/"/g, '""')}"`
+                          ];
+                        });
+                        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+                        const encodedUri = encodeURI(csvContent);
+                        const link = document.createElement("a");
+                        link.setAttribute("href", encodedUri);
+                        link.setAttribute("download", `upasyo_contact_inquiries_with_date_${new Date().toISOString().slice(0, 10)}.csv`);
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      }}
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-mono font-bold bg-zinc-800 hover:bg-zinc-700 text-white dark:bg-zinc-200 dark:text-zinc-900 dark:hover:bg-white transition-colors cursor-pointer shadow-xs"
+                      title="Export CSV with date and timestamp"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>EXPORT CSV</span>
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -2200,17 +2258,46 @@ export default function AdminDashboard({
               <div className="space-y-4">
                 {messages.map((msg) => (
                   <div key={msg.id} className="p-5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800 rounded-xl space-y-2">
-                    <div className="flex justify-between items-start">
+                    <div className="flex justify-between items-start gap-4">
                       <div>
-                        <h4 className="font-mono text-sm font-bold text-gray-900 dark:text-white">{msg.subject || "No Subject"}</h4>
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <h4 className="font-mono text-sm font-bold text-gray-900 dark:text-white">{msg.subject || "No Subject"}</h4>
+                          <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-mono text-[10px] font-bold flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            DATE: {msg.date || (msg.timestamp ? msg.timestamp.split('T')[0] : 'N/A')}
+                          </span>
+                        </div>
                         <p className="text-xs text-gray-400">FROM: <span className="font-semibold text-gray-700 dark:text-zinc-300">{msg.name}</span> ({msg.email})</p>
                       </div>
-                      <span className="text-[10px] text-gray-400 font-mono">{new Date(msg.timestamp).toLocaleString()}</span>
+                      <div className="text-right flex flex-col items-end">
+                        <span className="text-[10px] text-gray-400 font-mono">
+                          {msg.formattedTime || (msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString() : "")}
+                        </span>
+                        <span className="text-[9px] text-gray-400 font-mono">
+                          {msg.timestamp ? new Date(msg.timestamp).toLocaleDateString() : ""}
+                        </span>
+                      </div>
                     </div>
                     <p className="text-xs text-gray-700 dark:text-zinc-300 bg-white dark:bg-zinc-900/60 p-3 rounded-lg border border-zinc-100 dark:border-zinc-800 leading-relaxed italic">
                       "{msg.message}"
                     </p>
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-between items-center pt-1">
+                      <button
+                        onClick={() => {
+                          const dateStr = msg.date || (msg.timestamp ? msg.timestamp.split('T')[0] : '');
+                          const timeStr = msg.formattedTime || (msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString() : '');
+                          const row = `${dateStr}\t${timeStr}\t${msg.timestamp || ''}\t${msg.name || ''}\t${msg.email || ''}\t${msg.subject || ''}\t${(msg.message || '').replace(/\r?\n|\r/g, ' ')}`;
+                          navigator.clipboard.writeText(row);
+                          setCopiedMsgId(msg.id);
+                          setTimeout(() => setCopiedMsgId(null), 3000);
+                        }}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors"
+                        title="Copy row with date for Google Sheet"
+                      >
+                        {copiedMsgId === msg.id ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                        <span>{copiedMsgId === msg.id ? "COPIED ROW" : "COPY FOR SPREADSHEET"}</span>
+                      </button>
+
                       <button
                         onClick={() => handleDeleteItem(COLLECTIONS.CONTACT_MESSAGES, msg.id)}
                         className={getDeleteBtnClass(COLLECTIONS.CONTACT_MESSAGES, msg.id)}

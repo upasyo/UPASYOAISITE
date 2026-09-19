@@ -70,6 +70,7 @@ export const SEED_DATA = {
     instagramUrl: "https://instagram.com",
     whatsappUrl: "https://wa.me",
     spreadsheetUrl: "https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit?usp=sharing",
+    spreadsheetWebhookUrl: "",
     tickerText: "QUANTUM COMPUTING RESEARCH, FAULT-TOLERANT QUANTUM ARCHITECTURES, QUANTUM MACHINE LEARNING (QML), VARIATIONAL QUANTUM EIGENSOLVERS (VQE), QUANTUM ERROR CORRECTION (QEC), TENSOR NETWORK SIMULATIONS, QUANTUM SUPREMACY & ADVANTAGE, NEURO-QUANTUM COGNITION",
     buttons: {
       collab: { name: "DEPLOY QUANTUM COLLAB", url: "#contact", color: "" },
@@ -502,18 +503,52 @@ export async function deleteDocument(collectionName: string, docId: string) {
   }
 }
 
-// Submit contact form message in Firestore
-export async function submitContactMessage(name: string, email: string, subject: string, message: string) {
+// Submit contact form message in Firestore and insert the date of the form for the spreadsheet
+export async function submitContactMessage(
+  name: string, 
+  email: string, 
+  subject: string, 
+  message: string, 
+  formDate?: string,
+  spreadsheetWebhookUrl?: string
+) {
   try {
-    const colRef = collection(db, COLLECTIONS.CONTACT_MESSAGES);
-    await addDoc(colRef, {
+    const submissionDate = formDate || new Date().toISOString().split("T")[0];
+    const now = new Date();
+    const formattedTimestamp = now.toISOString();
+    const formattedDate = now.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+    const formattedTime = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+    const messageData = {
       name,
       email,
       subject,
       message,
-      timestamp: new Date().toISOString()
-    });
-    return true;
+      date: submissionDate,
+      formattedDate,
+      formattedTime,
+      timestamp: formattedTimestamp
+    };
+
+    const colRef = collection(db, COLLECTIONS.CONTACT_MESSAGES);
+    const docRef = await addDoc(colRef, messageData);
+
+    // Relay to Express backend endpoint for logging and optional spreadsheet webhook forwarding
+    try {
+      await fetch("/api/record-inquiry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...messageData,
+          docId: docRef.id,
+          spreadsheetWebhookUrl
+        })
+      });
+    } catch (relayErr) {
+      console.warn("Spreadsheet relay notice:", relayErr);
+    }
+
+    return { id: docRef.id, ...messageData };
   } catch (err) {
     console.error("Error submitting contact message to firestore:", err);
     throw err;
