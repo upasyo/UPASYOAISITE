@@ -21,13 +21,25 @@ import {
   Plus,
   Trash2,
   Globe,
-  MapPin
+  MapPin,
+  Lock,
+  Unlock,
+  ShieldCheck,
+  ShieldAlert,
+  Eye,
+  EyeOff,
+  KeyRound,
+  LogOut
 } from "lucide-react";
 import { 
   ResumeData, 
   DEFAULT_RESUME_DATA, 
   fetchResumeData, 
-  saveResumeData 
+  saveResumeData,
+  isCmsAdminAuthenticated,
+  setCmsAdminAuthenticated,
+  verifyCmsAdminPasscode,
+  CMS_ADMIN_PASSCODE
 } from "../firebase";
 
 interface ResumeModalProps {
@@ -36,6 +48,8 @@ interface ResumeModalProps {
   linkedinUrl?: string;
   userEmail?: string;
   onDataUpdated?: (data: ResumeData) => void;
+  isAdmin?: boolean;
+  setIsAdmin?: (admin: boolean) => void;
 }
 
 export default function ResumeModal({ 
@@ -43,24 +57,45 @@ export default function ResumeModal({
   onClose,
   linkedinUrl = "https://www.linkedin.com/in/upasyokushari/",
   userEmail = "upasyokushari@gmail.com",
-  onDataUpdated
+  onDataUpdated,
+  isAdmin,
+  setIsAdmin
 }: ResumeModalProps) {
   const [resume, setResume] = useState<ResumeData>(DEFAULT_RESUME_DATA);
   const [isEditing, setIsEditing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+
+  // Authentication & Passcode Protection State
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return Boolean(isAdmin || isCmsAdminAuthenticated());
+  });
+  const [showPasscodeModal, setShowPasscodeModal] = useState(false);
+  const [passcodeInput, setPasscodeInput] = useState("");
+  const [passcodeError, setPasscodeError] = useState("");
+  const [showPasswordText, setShowPasswordText] = useState(false);
+  const [authNotice, setAuthNotice] = useState("");
 
   // Load latest resume data from Firestore / local storage on modal open
   useEffect(() => {
     if (isOpen) {
+      const authStatus = Boolean(isAdmin || isCmsAdminAuthenticated());
+      setIsAuthenticated(authStatus);
       fetchResumeData().then((data) => {
         if (data) {
           setResume(data);
         }
       });
+    } else {
+      setIsEditing(false);
+      setShowPasscodeModal(false);
+      setPasscodeInput("");
+      setPasscodeError("");
+      setSaveError("");
     }
-  }, [isOpen]);
+  }, [isOpen, isAdmin]);
 
   if (!isOpen) return null;
 
@@ -68,27 +103,93 @@ export default function ResumeModal({
     window.print();
   };
 
+  // Toggle Edit Mode: Guarded strictly by CMS Admin Passcode
+  const handleEditToggle = () => {
+    if (isEditing) {
+      setIsEditing(false);
+      return;
+    }
+
+    const currentAuth = Boolean(isAdmin || isCmsAdminAuthenticated());
+    if (currentAuth) {
+      setIsAuthenticated(true);
+      setIsEditing(true);
+    } else {
+      setPasscodeInput("");
+      setPasscodeError("");
+      setShowPasscodeModal(true);
+    }
+  };
+
+  // Handle Passcode Unlock Verification
+  const handlePasscodeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (verifyCmsAdminPasscode(passcodeInput)) {
+      setIsAuthenticated(true);
+      setCmsAdminAuthenticated(true);
+      if (setIsAdmin) setIsAdmin(true);
+      setShowPasscodeModal(false);
+      setPasscodeInput("");
+      setPasscodeError("");
+      setIsEditing(true);
+      setAuthNotice("✓ CMS Admin Passcode Verified. Full CV edit mode enabled.");
+      setTimeout(() => setAuthNotice(""), 4500);
+    } else {
+      setPasscodeError("Access Denied: Incorrect CMS admin passcode. Only the authorized CMS Admin can edit the CV.");
+    }
+  };
+
+  // Lock Admin Session & Return to Read-Only Mode
+  const handleLockSession = () => {
+    setIsEditing(false);
+    setIsAuthenticated(false);
+    setCmsAdminAuthenticated(false);
+    if (setIsAdmin) setIsAdmin(false);
+    setAuthNotice("CMS Admin session locked. CV is now in protected read-only view.");
+    setTimeout(() => setAuthNotice(""), 4500);
+  };
+
   const handleSave = async () => {
+    const currentAuth = Boolean(isAdmin || isCmsAdminAuthenticated() || isAuthenticated);
+    if (!currentAuth) {
+      setSaveError("UNAUTHORIZED: Only person with proper correct passcode of CMS admin can edit and save the CV.");
+      setIsEditing(false);
+      setShowPasscodeModal(true);
+      return;
+    }
+
     setIsSaving(true);
+    setSaveError("");
     try {
       await saveResumeData(resume);
       setSaveSuccess(true);
       if (onDataUpdated) onDataUpdated(resume);
-      setTimeout(() => setSaveSuccess(false), 3000);
+      setTimeout(() => setSaveSuccess(false), 3500);
       setIsEditing(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error saving resume:", err);
+      setSaveError(err?.message || "Failed to save resume. Proper CMS admin authentication required.");
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleResetToDefault = async () => {
+    const currentAuth = Boolean(isAdmin || isCmsAdminAuthenticated() || isAuthenticated);
+    if (!currentAuth) {
+      setShowPasscodeModal(true);
+      return;
+    }
+
     if (window.confirm("Are you sure you want to reset the resume to the default baseline?")) {
       setResume({ ...DEFAULT_RESUME_DATA });
-      await saveResumeData(DEFAULT_RESUME_DATA);
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
+      try {
+        await saveResumeData(DEFAULT_RESUME_DATA);
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
+      } catch (err: any) {
+        setSaveError(err?.message || "Reset failed. Proper CMS admin passcode required.");
+      }
     }
   };
 
@@ -338,30 +439,59 @@ ${awText}
                 <h3 className="font-mono text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">
                   CURRICULUM VITAE // {resume.name || "UPASYO KUSHARI"}
                 </h3>
-                <p className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
-                  {isEditing ? "Editable Mode — Changes persist across website" : "LinkedIn Verified Quantum Computing Researcher Profile"}
+                <p className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5 mt-0.5">
+                  {isEditing ? (
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                      <ShieldCheck className="w-3.5 h-3.5" /> CMS Admin Authenticated · Real-Time CV Edit Mode
+                    </span>
+                  ) : isAuthenticated ? (
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                      <ShieldCheck className="w-3.5 h-3.5" /> Verified CMS Admin Session Active
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-zinc-500 dark:text-zinc-400">
+                      <Lock className="w-3 h-3 text-zinc-400" /> Protected Document · CMS Admin Passcode Required to Edit
+                    </span>
+                  )}
                 </p>
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              {/* EDIT / VIEW TOGGLE BUTTON */}
-              <button
-                onClick={() => setIsEditing(!isEditing)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer shadow-xs ${
-                  isEditing 
-                    ? "bg-brand-accent-pink text-white hover:bg-pink-600" 
-                    : "bg-pink-50 dark:bg-pink-950/40 text-brand-accent-pink border border-pink-200 dark:border-pink-800 hover:bg-pink-100 dark:hover:bg-pink-900/60"
-                }`}
-                title={isEditing ? "Switch to formatted view" : "Edit entire CV / Resume"}
-                id="edit-resume-toggle-btn"
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-                <span>{isEditing ? "VIEW FORMATTED CV" : "EDIT CV / RESUME"}</span>
-              </button>
+              {/* EDIT / VIEW TOGGLE BUTTON (GUARDED BY CMS ADMIN PASSCODE) */}
+              {!isEditing ? (
+                <button
+                  onClick={handleEditToggle}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer shadow-xs ${
+                    isAuthenticated 
+                      ? "bg-pink-50 dark:bg-pink-950/40 text-brand-accent-pink border border-pink-200 dark:border-pink-800 hover:bg-pink-100 dark:hover:bg-pink-900/60"
+                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-700 hover:border-brand-accent-pink hover:text-brand-accent-pink"
+                  }`}
+                  title={isAuthenticated ? "Edit entire CV / Resume (Admin verified)" : "Unlock CV Editing with CMS Admin Passcode"}
+                  id="edit-resume-toggle-btn"
+                >
+                  {isAuthenticated ? (
+                    <>
+                      <Edit3 className="w-3.5 h-3.5 text-brand-accent-pink" />
+                      <span>EDIT CV / RESUME</span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" title="Admin Unlocked" />
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
+                      <span>EDIT CV (PASSCODE REQUIRED)</span>
+                    </>
+                  )}
+                </button>
+              ) : null}
 
               {isEditing ? (
                 <>
+                  <span className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-100/80 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-[11px] font-mono font-bold">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>CMS ADMIN</span>
+                  </span>
+
                   <button
                     onClick={handleSave}
                     disabled={isSaving}
@@ -374,12 +504,30 @@ ${awText}
                   </button>
 
                   <button
+                    onClick={() => setIsEditing(false)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-all cursor-pointer"
+                    title="Switch to formatted preview"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>VIEW FORMATTED</span>
+                  </button>
+
+                  <button
                     onClick={handleResetToDefault}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-all cursor-pointer"
-                    title="Reset to default quantum profile"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono font-semibold bg-zinc-100 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all cursor-pointer"
+                    title="Reset to default quantum profile baseline"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
-                    <span>RESET DEFAULT</span>
+                    <span>RESET</span>
+                  </button>
+
+                  <button
+                    onClick={handleLockSession}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono font-semibold bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/60 hover:bg-red-100 transition-all cursor-pointer"
+                    title="Lock edit mode and disconnect CMS admin session"
+                  >
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>LOCK</span>
                   </button>
                 </>
               ) : (
@@ -413,6 +561,16 @@ ${awText}
                     <span>LINKEDIN</span>
                     <ExternalLink className="w-3 h-3 ml-0.5 opacity-80" />
                   </a>
+
+                  {isAuthenticated && (
+                    <button
+                      onClick={handleLockSession}
+                      className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40 text-zinc-400 hover:text-red-500 transition-colors cursor-pointer"
+                      title="Lock CMS Admin Session"
+                    >
+                      <Lock className="w-4 h-4" />
+                    </button>
+                  )}
                 </>
               )}
 
@@ -426,7 +584,17 @@ ${awText}
             </div>
           </div>
 
-          {/* Save confirmation toast */}
+          {/* Authentication & Status Toasts */}
+          {authNotice && (
+            <div className="bg-emerald-50 dark:bg-emerald-950/50 border-b border-emerald-200 dark:border-emerald-800 px-6 py-2.5 flex items-center justify-between text-xs font-mono text-emerald-800 dark:text-emerald-300">
+              <span className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                {authNotice}
+              </span>
+              <button onClick={() => setAuthNotice("")} className="cursor-pointer text-emerald-700 dark:text-emerald-400">✕</button>
+            </div>
+          )}
+
           {saveSuccess && (
             <div className="bg-emerald-50 dark:bg-emerald-950/50 border-b border-emerald-200 dark:border-emerald-800 px-6 py-2.5 flex items-center justify-between text-xs font-mono text-emerald-800 dark:text-emerald-300">
               <span className="flex items-center gap-2">
@@ -434,6 +602,115 @@ ${awText}
                 Resume successfully saved to Firestore and local cache!
               </span>
               <button onClick={() => setSaveSuccess(false)} className="cursor-pointer text-emerald-700 dark:text-emerald-400">✕</button>
+            </div>
+          )}
+
+          {saveError && (
+            <div className="bg-red-50 dark:bg-red-950/50 border-b border-red-200 dark:border-red-800 px-6 py-2.5 flex items-center justify-between text-xs font-mono text-red-800 dark:text-red-300">
+              <span className="flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-red-600 dark:text-red-400" />
+                {saveError}
+              </span>
+              <button onClick={() => setSaveError("")} className="cursor-pointer text-red-700 dark:text-red-400">✕</button>
+            </div>
+          )}
+
+          {/* CMS ADMIN PASSCODE VERIFICATION MODAL OVERLAY */}
+          {showPasscodeModal && (
+            <div className="fixed inset-0 z-[300] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.94, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.94, y: 12 }}
+                className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-5 text-left"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-pink-100 dark:bg-pink-950/60 border border-pink-200 dark:border-pink-800/60 flex items-center justify-center text-brand-accent-pink">
+                      <Lock className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-mono text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+                        CMS ADMIN PASSCODE REQUIRED
+                      </h4>
+                      <p className="text-[11px] font-mono text-gray-500 dark:text-zinc-400 mt-0.5">
+                        Authorization Gate for CV Editing
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowPasscodeModal(false);
+                      setPasscodeInput("");
+                      setPasscodeError("");
+                    }}
+                    className="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="p-3.5 bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200/70 dark:border-zinc-800 rounded-xl text-xs font-mono text-gray-600 dark:text-zinc-400 leading-relaxed">
+                  <span className="font-bold text-zinc-800 dark:text-zinc-200">Security Requirement:</span> Only the person with the proper correct passcode of the CMS admin can edit the Curriculum Vitae.
+                </div>
+
+                <form onSubmit={handlePasscodeSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-[10.5px] font-mono font-bold text-gray-700 dark:text-zinc-300 uppercase tracking-wider mb-1.5">
+                      ENTER CMS ADMIN PASSCODE
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPasswordText ? "text" : "password"}
+                        value={passcodeInput}
+                        onChange={(e) => {
+                          setPasscodeInput(e.target.value);
+                          setPasscodeError("");
+                        }}
+                        placeholder="Enter admin passcode"
+                        autoFocus
+                        className="w-full bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 focus:border-brand-accent-pink focus:ring-1 focus:ring-brand-accent-pink rounded-xl px-4 py-2.5 text-xs font-mono text-gray-900 dark:text-white pr-10 outline-none transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPasswordText(!showPasswordText)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-zinc-200 cursor-pointer"
+                        tabIndex={-1}
+                      >
+                        {showPasswordText ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {passcodeError && (
+                    <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 rounded-xl flex items-start gap-2 text-xs font-mono text-red-600 dark:text-red-400">
+                      <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
+                      <span>{passcodeError}</span>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2.5 pt-1">
+                    <button
+                      type="submit"
+                      className="flex-1 bg-brand-accent-pink hover:bg-pink-600 text-white font-mono font-bold text-xs py-2.5 px-4 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2 shadow-sm"
+                    >
+                      <KeyRound className="w-3.5 h-3.5" />
+                      <span>UNLOCK CV EDITING</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowPasscodeModal(false);
+                        setPasscodeInput("");
+                        setPasscodeError("");
+                      }}
+                      className="px-4 py-2.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-700 dark:text-zinc-300 font-mono text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                    >
+                      CANCEL
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
             </div>
           )}
 

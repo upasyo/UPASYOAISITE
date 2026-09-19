@@ -39,7 +39,11 @@ import {
   ResumeData,
   DEFAULT_RESUME_DATA,
   fetchResumeData,
-  saveResumeData
+  saveResumeData,
+  CMS_ADMIN_PASSCODE,
+  isCmsAdminAuthenticated,
+  setCmsAdminAuthenticated,
+  verifyCmsAdminPasscode
 } from "../firebase";
 
 interface AdminDashboardProps {
@@ -59,7 +63,7 @@ export default function AdminDashboard({
   activeTab: passedActiveTab,
   setActiveTab: passedSetActiveTab
 }: AdminDashboardProps) {
-  const [localIsAuthenticated, setLocalIsAuthenticated] = useState(false);
+  const [localIsAuthenticated, setLocalIsAuthenticated] = useState(() => isCmsAdminAuthenticated());
   const isAuthenticated = isAdmin !== undefined ? isAdmin : localIsAuthenticated;
   const setIsAuthenticated = setIsAdmin !== undefined ? setIsAdmin : setLocalIsAuthenticated;
 
@@ -187,11 +191,12 @@ export default function AdminDashboard({
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === adminPasscode) {
+    if (verifyCmsAdminPasscode(password)) {
       setIsAuthenticated(true);
+      setCmsAdminAuthenticated(true);
       setAuthError("");
     } else {
-      setAuthError("Invalid access token code.");
+      setAuthError("Invalid access token code. Only authorized CMS administrator can access.");
     }
   };
 
@@ -531,7 +536,10 @@ export default function AdminDashboard({
             {confirmReset ? "SURE? TAP AGAIN TO SEED" : "RESET_DB_DEFAULT"}
           </button>
           <button
-            onClick={() => setIsAuthenticated(false)}
+            onClick={() => {
+              setIsAuthenticated(false);
+              setCmsAdminAuthenticated(false);
+            }}
             className="flex items-center gap-1.5 text-xs font-mono bg-zinc-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 px-3 py-2 rounded-lg cursor-pointer hover:bg-zinc-200 transition-colors"
           >
             <LogOut className="w-3.5 h-3.5" />
@@ -2502,9 +2510,9 @@ export default function AdminDashboard({
                       setResumeSaveMsg("Resume successfully saved to Firestore!");
                       triggerStatus("success", "Resume compiled and persisted successfully!");
                       setTimeout(() => setResumeSaveMsg(""), 3500);
-                    } catch (e) {
+                    } catch (e: any) {
                       console.error(e);
-                      triggerStatus("error", "Failed to save resume.");
+                      triggerStatus("error", e?.message || "Failed to save resume. Proper CMS admin passcode required.");
                     } finally {
                       setIsSavingResume(false);
                     }

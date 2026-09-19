@@ -43,7 +43,8 @@ import {
   seedDatabaseIfEmpty, 
   syncQuantumSeedToDatabase,
   COLLECTIONS,
-  SEED_DATA
+  SEED_DATA,
+  isCmsAdminAuthenticated
 } from "./firebase";
 import NetworkLogo from "./components/NetworkLogo";
 import NeuralBackground from "./components/NeuralBackground";
@@ -134,6 +135,7 @@ export default function App() {
 
   // Admin Dashboard drawer state
   const [displayAdmin, setDisplayAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(() => isCmsAdminAuthenticated());
   const [showResumeModal, setShowResumeModal] = useState(false);
   const [greeting, setGreeting] = useState("");
 
@@ -628,6 +630,8 @@ export default function App() {
             >
               <AdminDashboard 
                 isDarkMode={isDarkMode} 
+                isAdmin={isAdmin}
+                setIsAdmin={setIsAdmin}
                 onSettingsSaved={() => loadProfileParameters(true)} 
               />
             </motion.section>
@@ -1496,6 +1500,8 @@ export default function App() {
         onClose={() => setShowResumeModal(false)}
         linkedinUrl={siteSettings?.linkedinUrl || "https://www.linkedin.com/in/upasyokushari/"}
         userEmail="upasyokushari@gmail.com"
+        isAdmin={isAdmin}
+        setIsAdmin={setIsAdmin}
       />
     </div>
   );

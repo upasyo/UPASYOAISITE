@@ -780,8 +780,36 @@ export async function fetchResumeData(): Promise<ResumeData> {
   return DEFAULT_RESUME_DATA;
 }
 
-// Save Resume Data to Firestore and cache in localStorage
-export async function saveResumeData(data: ResumeData): Promise<boolean> {
+export const CMS_ADMIN_PASSCODE = "Upasyo@2007";
+
+// Check if CMS admin is authenticated
+export function isCmsAdminAuthenticated(): boolean {
+  if (typeof window === "undefined") return false;
+  return sessionStorage.getItem("upasyo_cms_admin_auth") === "true";
+}
+
+// Set CMS admin authentication status in session
+export function setCmsAdminAuthenticated(authenticated: boolean): void {
+  if (typeof window === "undefined") return;
+  if (authenticated) {
+    sessionStorage.setItem("upasyo_cms_admin_auth", "true");
+  } else {
+    sessionStorage.removeItem("upasyo_cms_admin_auth");
+  }
+}
+
+// Verify entered passcode against CMS admin passcode
+export function verifyCmsAdminPasscode(passcode: string): boolean {
+  return passcode.trim() === CMS_ADMIN_PASSCODE;
+}
+
+// Save Resume Data to Firestore and cache in localStorage - ONLY for person with proper CMS admin passcode
+export async function saveResumeData(data: ResumeData, adminPasscodeAttempt?: string): Promise<boolean> {
+  const isAuth = isCmsAdminAuthenticated() || (adminPasscodeAttempt ? verifyCmsAdminPasscode(adminPasscodeAttempt) : false);
+  if (!isAuth) {
+    throw new Error("UNAUTHORIZED_ACCESS: Only the person with the proper correct passcode of CMS admin can edit and save the CV.");
+  }
+
   localStorage.setItem("upasyo_resume_data", JSON.stringify(data));
   try {
     await updateOrCreateDoc(COLLECTIONS.RESUME, "default", data);
